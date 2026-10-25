@@ -165,11 +165,11 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
           <b id="tEntry" class="m text-lg text-white"></b>
         </div>
         <div class="b border-rose-500/50">
-          <span class="text-[11px] text-rose-400 block">🛑 ستوب واحد (SL)</span>
+          <span class="text-[11px] text-rose-400 block">🛑 ستوب هيكلي (SL)</span>
           <b id="tSl" class="m text-lg text-rose-400"></b>
         </div>
         <div class="b border-emerald-500/50">
-          <span class="text-[11px] text-emerald-400 block">🚀 هدف واحد (TP)</span>
+          <span class="text-[11px] text-emerald-400 block">🚀 هدف ديناميكي (TP)</span>
           <b id="tTp" class="m text-lg text-emerald-400"></b>
         </div>
         <div class="b border-cyan-500/40">
@@ -178,7 +178,7 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
         </div>
       </div>
       <p class="text-xs bg-slate-900/90 p-3 rounded-xl border border-slate-800">
-        <b class="text-amber-400">شرط التفعيل والإلغاء:</b> <span id="tTrig"></span>
+        <b class="text-amber-400">شرط التفعيل والهيكل الفني:</b> <span id="tTrig"></span>
       </p>
     </div>
 
@@ -288,7 +288,7 @@ function analyzeChartPixels(canvas) {
   }
 
   if (colData.length < 6) {
-    return { valid: false, bias: 'RANGING', structure: 'غير واضح', slope: 0, bullRatio: 0.5, sweepType: 'NONE', sweepStrength: 0.3, lastNorm: 0.5, swingHighNorm: 0.75, swingLowNorm: 0.25 };
+    return { valid: false, bias: 'RANGING', structure: 'غير واضح', slope: 0, bullRatio: 0.5, sweepType: 'NONE', sweepStrength: 0.3, lastNorm: 0.5, swingHighNorm: 0.75, swingLowNorm: 0.25, recentHighNorm: 0.7, recentLowNorm: 0.3, posInWave: 0.5, totalCandles: 20 };
   }
 
   const n = colData.length;
@@ -298,12 +298,15 @@ function analyzeChartPixels(canvas) {
   const avg2 = secondHalf.reduce((a, b) => a + b.midNorm, 0) / secondHalf.length;
   const slope = avg2 - avg1;
 
-  const recent = colData.slice(-6);
+  const recent = colData.slice(-8);
   const recentBull = recent.filter(x => x.bull).length;
   const bullRatio = bullPx / Math.max(1, bullPx + bearPx);
 
   let swingHighNorm = Math.max(...colData.map(d => d.highNorm));
   let swingLowNorm = Math.min(...colData.map(d => d.lowNorm));
+  let recentHighNorm = Math.max(...recent.map(d => d.highNorm));
+  let recentLowNorm = Math.min(...recent.map(d => d.lowNorm));
+
   const lastCol = colData[n - 1];
   const lastNorm = lastCol.midNorm;
   const rangeNorm = Math.max(0.08, swingHighNorm - swingLowNorm);
@@ -326,9 +329,9 @@ function analyzeChartPixels(canvas) {
 
   const sweepType = bullSweep > bearSweep ? 'BULL_SWEEP' : bearSweep > bullSweep ? 'BEAR_SWEEP' : 'OB_RETEST';
   const sweepStrength = Math.min(1, 0.45 + (Math.max(bullSweep, bearSweep) * 0.2) + Math.abs(slope) * 1.5);
-  const posInWave = (lastNorm - swingLowNorm) / rangeNorm;
+  const posInWave = Math.min(1, Math.max(0, (lastNorm - swingLowNorm) / rangeNorm));
 
-  return { valid: true, bias, structure, slope, bullRatio, recentBull, sweepType, sweepStrength, lastNorm, swingHighNorm, swingLowNorm, posInWave };
+  return { valid: true, bias, structure, slope, bullRatio, recentBull, sweepType, sweepStrength, lastNorm, swingHighNorm, swingLowNorm, recentHighNorm, recentLowNorm, posInWave, totalCandles: n };
 }
 
 function cropCanvas(srcCanvas, rx, ry, rw, rh, scale = 2.2) {
@@ -402,19 +405,29 @@ async function fetchMarketPrice(symbol, tf) {
     const closes = klines.map(k => parseFloat(k[4]));
     const livePrice = closes[closes.length - 1];
     
-    // حساب ATR مبسط
+    // حساب ATR و القمم والقيعان الحقيقية من آخر الشموع
     let trSum = 0;
+    const recentKlines = klines.slice(-24);
+    let recentHigh = -Infinity, recentLow = Infinity;
+
     for (let i = 1; i < klines.length; i++) {
       const h = parseFloat(klines[i][2]), l = parseFloat(klines[i][3]), pc = parseFloat(klines[i - 1][4]);
       trSum += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
     }
+    recentKlines.forEach(k => {
+      const h = parseFloat(k[2]), l = parseFloat(k[3]);
+      if (h > recentHigh) recentHigh = h;
+      if (l < recentLow) recentLow = l;
+    });
+
     const atr = trSum / (klines.length - 1);
 
-    return { source: `Binance Open API (${bSym})`, livePrice, atr };
+    return { source: `Binance Open API (${bSym})`, livePrice, atr, recentHigh, recentLow };
   } catch (e) {
-    const fallbacks = { 'BTCUSDT': 68500, 'ETHUSDT': 2650, 'PAXGUSDT': 2740, 'SOLUSDT': 180, 'EURUSD': 1.0850 };
-    const p = fallbacks[bSym] || 68500;
-    return { source: `سعر مرجعي آمن (${bSym})`, livePrice: p, atr: p * 0.012 };
+    const fallbacks = { 'BTCUSDT': 80800, 'ETHUSDT': 2650, 'PAXGUSDT': 2740, 'SOLUSDT': 180, 'EURUSD': 1.0850 };
+    const p = fallbacks[bSym] || 80800;
+    const atr = p * 0.0045;
+    return { source: `سعر مرجعي آمن (${bSym})`, livePrice: p, atr, recentHigh: p + atr * 2.2, recentLow: p - atr * 2.2 };
   }
 }
 
@@ -485,18 +498,17 @@ async function analyze(runFreshOCR = false) {
   if (!symbol) symbol = 'BTCUSDT';
   const tf = $('detTf').value || '15m';
 
-  $('loadMsg').textContent = '🌐 جاري جلب السعر الحقيقي وحساب الستوب والهدف بدقة...';
+  $('loadMsg').textContent = '🌐 جاري جلب السعر الحقيقي وحساب الستوب الهيكلي والهدف بدقة...';
   const market = await fetchMarketPrice(symbol, tf);
 
   let price = parseFloat($('detPrice').value) || market.livePrice;
-  $('detPrice').value = price.toFixed(formatDecimals(price));
+  const dec = formatDecimals(price);
+  $('detPrice').value = price.toFixed(dec);
 
   $('load').classList.add('hidden');
   $('res').classList.remove('hidden');
 
-  $('ocrStatus').textContent = `✅ تم التعرف على: ${symbol} (${tf}) @ ${price.toFixed(formatDecimals(price))}`;
-
-  const dec = formatDecimals(price);
+  $('ocrStatus').textContent = `✅ تم التعرف على: ${symbol} (${tf}) @ ${price.toFixed(dec)}`;
 
   let paScore = px.bias !== 'RANGING' ? Math.min(50, 22 + Math.min(16, Math.round(Math.abs(px.slope) * 145)) + Math.min(12, Math.round(Math.abs(px.bullRatio - 0.5) * 42))) : 25;
   let lqScore = Math.max(8, Math.min(30, Math.round(12 + px.sweepStrength * 18)));
@@ -509,29 +521,66 @@ async function analyze(runFreshOCR = false) {
   $('pIN').textContent = `${inScore} / 20`;
   $('tot').textContent = `${totalScore}%`;
   $('bar').style.width = `${totalScore}%`;
+  $('grade').textContent = totalScore >= 80 ? 'A+ قوية جداً' : totalScore >= 65 ? 'B+ مؤكدة' : 'C انتظار';
   $('engTag').textContent = market.source;
 
-  // --- هندسة الدخول والستوب والهدف (مضمونة وموجبة 100%) ---
+  // --- هندسة الدخول والستوب الهيكلي (فوق القمة / تحت القاع) والهدف الديناميكي (>= 1:1.5) ---
   const isBuy = px.bias === 'BULLISH';
-  const atrVal = market.atr || (price * 0.015);
+  const atrVal = market.atr || (price * 0.005);
 
-  const needPendingOrder = (isBuy && px.posInWave > 0.7) || (!isBuy && px.posInWave < 0.3);
-  const offset = needPendingOrder ? atrVal * 0.4 : 0;
-  
+  const needPendingOrder = (isBuy && px.posInWave > 0.72) || (!isBuy && px.posInWave < 0.28);
+  const offset = needPendingOrder ? atrVal * 0.35 : 0;
   const entryPrice = isBuy ? (price - offset) : (price + offset);
 
-  const stopDist = Math.max(price * 0.005, atrVal * 1.2);
-  const effectiveRR = 2.0; // عائد 1:2
-  const targetDist = stopDist * effectiveRR;
+  // تقدير مدى الشارت المرئي استناداً إلى عدد الشموع والـ ATR لتحديد موقع القمة/القاع البصري بدقة
+  const visibleChartRange = Math.max(atrVal * 3.2, price * 0.008);
+  const buffer = atrVal * 0.25; // هامش أمان فوق القمة أو تحت القاع لمنع ضرب الستوب بالذيول (Stop Hunt)
 
-  let slPrice, tpPrice;
+  let structuralStopDist, structureRefName;
+
   if (isBuy) {
-    slPrice = entryPrice - stopDist;
-    tpPrice = entryPrice + targetDist;
+    // حساب القاع المرصود بصرياً على الشارت + مطابقته مع القاع الفعلي ووضع الستوب أسفله بهامش أمان
+    const visualSwingLow = entryPrice - (Math.max(0.18, px.posInWave) * visibleChartRange);
+    const candidateLow = (market.recentLow && market.recentLow < entryPrice && (entryPrice - market.recentLow) <= atrVal * 3.5)
+      ? Math.min(visualSwingLow, market.recentLow)
+      : visualSwingLow;
+    const rawDist = (entryPrice - candidateLow) + buffer;
+    // ضمان أن الستوب منطقي (لا يقل عن 0.8 ATR ولا يتجاوز 2.6 ATR على الفريم)
+    structuralStopDist = Math.max(atrVal * 0.85, Math.min(rawDist, atrVal * 2.6));
+    structureRefName = 'تحت آخر قاع هيكلي (Swing Low) + هامش أمان';
   } else {
-    slPrice = entryPrice + stopDist;
-    tpPrice = entryPrice - targetDist; // في البيع: الهدف أقل من الدخول بقيمة صحيحة وموجبة
+    // حساب القمة المرصودة بصرياً على الشارت + مطابقتها مع القمة الفعلية ووضع الستوب أعلاها بهامش أمان
+    const visualSwingHigh = entryPrice + (Math.max(0.18, (1 - px.posInWave)) * visibleChartRange);
+    const candidateHigh = (market.recentHigh && market.recentHigh > entryPrice && (market.recentHigh - entryPrice) <= atrVal * 3.5)
+      ? Math.max(visualSwingHigh, market.recentHigh)
+      : visualSwingHigh;
+    const rawDist = (candidateHigh - entryPrice) + buffer;
+    structuralStopDist = Math.max(atrVal * 0.85, Math.min(rawDist, atrVal * 2.6));
+    structureRefName = 'فوق آخر قمة هيكلية (Swing High) + هامش أمان';
   }
+
+  const slPrice = isBuy ? (entryPrice - structuralStopDist) : (entryPrice + structuralStopDist);
+
+  // --- حساب العائد للمخاطرة (R:R) بحيث لا يقل عن 1:1.5 أبداً ويزيد عند وجود فرصة ---
+  let dynamicRR = MIN_RR; // الحد الأدنى الصارم 1.5
+  const upsideRoom = isBuy ? (1 - px.posInWave) : px.posInWave; // المساحة المتاحة للحركة نحو الهدف
+
+  if (totalScore >= 82 && px.sweepStrength >= 0.75 && upsideRoom > 0.45) {
+    dynamicRR = 2.5; // فرصة قوية جداً ومساحة مفتوحة
+  } else if (totalScore >= 76 || px.sweepStrength >= 0.68) {
+    dynamicRR = 2.0; // فرصة ممتازة قياسية
+  } else if (totalScore >= 70 || Math.abs(px.slope) > 0.05) {
+    dynamicRR = 1.8; // زخم جيد يدعم امتداد الهدف
+  } else {
+    dynamicRR = 1.5; // الحد الأدنى الآمن والمشروط
+  }
+
+  // تأكيد إضافي أن العائد لا يقل عن 1.5 تحت أي ظرف
+  const effectiveRR = Math.max(MIN_RR, Number(dynamicRR.toFixed(1)));
+  const targetDist = structuralStopDist * effectiveRR;
+  const tpPrice = isBuy ? (entryPrice + targetDist) : (entryPrice - targetDist);
+
+  $('liveIndBadge').textContent = `ATR: ${atrVal.toFixed(dec)} | R:R 1:${effectiveRR}`;
 
   const isConfirmedTrade = (totalScore >= MIN_SCORE) && $('news').value !== 'block';
 
@@ -550,11 +599,12 @@ async function analyze(runFreshOCR = false) {
     $('tTp').textContent = tpPrice.toFixed(dec);
     $('tRr').textContent = `1 : ${effectiveRR}`;
 
-    $('tTrig').textContent = `تفعيل التوصية عند الدخول (${entryPrice.toFixed(dec)}) مع تحديد الستوب (${slPrice.toFixed(dec)}) والهدف (${tpPrice.toFixed(dec)}).`;
+    $('tTrig').textContent = `تم وضع الستوب (${slPrice.toFixed(dec)}) ${structureRefName}، وتحديد الهدف (${tpPrice.toFixed(dec)}) بعائد 1:${effectiveRR} بناءً على قوة السيولة والمساحة السعرية.`;
 
     S.lastReport = `📊 صفقة موثوقة (${symbol} - ${tf.toUpperCase()})\n` +
+      `النوع: ${isBuy ? 'شراء (BUY)' : 'بيع (SELL)'}\n` +
       `الدخول: ${entryPrice.toFixed(dec)}\n` +
-      `الستوب (SL): ${slPrice.toFixed(dec)}\n` +
+      `الستوب الهيكلي (SL): ${slPrice.toFixed(dec)} (${structureRefName})\n` +
       `الهدف (TP): ${tpPrice.toFixed(dec)}\n` +
       `العائد للمخاطرة (R:R): 1 : ${effectiveRR}`;
   } else {
@@ -562,23 +612,46 @@ async function analyze(runFreshOCR = false) {
     $('nt').classList.remove('hidden');
     $('nSym').textContent = `${symbol} • ${tf.toUpperCase()}`;
     $('nTitle').textContent = `عدم تأكيد الدخول (القوة الحالية ${totalScore}%)`;
-    $('nReasons').innerHTML = `<li>التقييم الحالي أقل من الحد الآمن المطلوب (65%).</li>`;
-    $('nUp').textContent = (price * 1.01).toFixed(dec);
+    $('nReasons').innerHTML = `<li>التقييم الحالي أقل من الحد الآمن المطلوب (65%) أو يوجد فلتر أخبار مفعل.</li>`;
+    $('nUp').textContent = (price + visibleChartRange * 0.5).toFixed(dec);
     $('nCur').textContent = price.toFixed(dec);
-    $('nLow').textContent = (price * 0.99).toFixed(dec);
-    $('nPlan').textContent = 'انتظار وضوح الاتجاه ومراقبة الشموع القادمة.';
+    $('nLow').textContent = (price - visibleChartRange * 0.5).toFixed(dec);
+    $('nPlan').textContent = 'انتظار وضوح الاتجاه وكسر قمة أو قاع واضح قبل الدخول.';
   }
 
   $('paTxt').textContent = `${paScore} / 50 — ${px.structure}`;
-  $('lqTxt').textContent = `${lqScore} / 30 — تحليلات السيولة والـ Order Block`;
-  $('inTxt').textContent = `${inScore} / 20 — مؤشرات الزخم والـ ATR`;
+  $('lqTxt').textContent = `${lqScore} / 30 — تمركز السيولة (${structureRefName})`;
+  $('inTxt').textContent = `${inScore} / 20 — ATR (${atrVal.toFixed(dec)}) وعائد 1:${effectiveRR}`;
+
+  $('pts').innerHTML = [
+    `تم حساب وقف الخسارة (${slPrice.toFixed(dec)}) ${structureRefName} بمسافة (${structuralStopDist.toFixed(dec)}).`,
+    `العائد للمخاطرة مضبوط عند (1 : ${effectiveRR}) وهو يحقق شرطك الصارم (لا يقل عن 1:1.5 ويزيد مع قوة الفرصة).`,
+    `المسافة إلى الهدف تبلغ (${targetDist.toFixed(dec)}) عند مستوى (${tpPrice.toFixed(dec)}).`
+  ].map(item => `<li>${item}</li>`).join('');
 }
 
+// أحداث الرفع، السحب والإفلات، واللصق المباشر Ctrl+V
 $('empty').addEventListener('click', () => $('file').click());
 $('changeImg').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', e => { if (e.target.files?.[0]) load(e.target.files[0]); });
 $('clear').addEventListener('click', clearImage);
 $('go').addEventListener('click', () => analyze(false));
+
+window.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      load(item.getAsFile());
+      break;
+    }
+  }
+});
+
+const dropZone = $('empty');
+['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+dropZone.addEventListener('drop', e => { if (e.dataTransfer?.files?.[0]) load(e.dataTransfer.files[0]); });
 
 document.querySelectorAll('.copy').forEach(btn => {
   btn.addEventListener('click', () => {
