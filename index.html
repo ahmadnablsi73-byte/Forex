@@ -53,7 +53,7 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
       </div>
     </div>
 
-    <!-- البيانات المستخرجة من الصورة (قابلة للتصحيح الفوري إذا لزم) -->
+    <!-- البيانات المستخرجة من الصورة -->
     <div class="mt-3 pt-3 border-t border-slate-800">
       <div class="flex justify-between items-center mb-1.5">
         <span class="text-[11px] text-slate-300 font-bold">البيانات المقروءة من الشارت والسوق الحي:</span>
@@ -86,8 +86,8 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
   <div class="c">
     <h2 class="font-bold text-sm mb-2">2. إعدادات القراءة البصرية والأخبار</h2>
     <div class="mb-2.5">
-      <label class="text-[11px] text-slate-400 block mb-1">مفتاح Gemini Vision API المجاني (اختياري لزيادة دقة القراءة البصرية 100%)</label>
-      <input id="apiKey" type="password" placeholder="اتركه فارغاً لاستخدام محرك OCR المدمج + البيانات الحية المجانية">
+      <label class="text-[11px] text-slate-400 block mb-1">مفتاح Gemini Vision API المجاني (اختياري)</label>
+      <input id="apiKey" type="password" placeholder="اتركه فارغاً لاستخدام محرك OCR المدمج">
     </div>
     <div class="mb-2.5">
       <label class="text-[11px] text-slate-400 block mb-1">فلتر الأخبار الاقتصادية وقت التقاط الشارت</label>
@@ -129,18 +129,15 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
     </div>
   </div>
 
-  <!-- حالة الانتظار الأولية -->
   <div id="wait" class="c text-center text-sm text-slate-400 py-16">
     ارفع أو الصق صورة الشارت (Ctrl+V) ليقوم النظام بقراءة الرمز والفريم والأسعار من الصورة مباشرة، ثم جلب المؤشرات الفنية الحية وحساب قوة الصفقة.
   </div>
 
-  <!-- حالة التحميل -->
   <div id="load" class="c hidden text-center py-16 space-y-2">
     <div class="text-amber-400 font-bold animate-pulse text-base" id="loadMsg">👁️ جاري قراءة النصوص والأسعار من صورة الشارت (OCR)...</div>
     <p class="text-xs text-slate-400">يتم تحليل الشموع + سحب السيولة + جلب مؤشرات RSI & EMA الحية</p>
   </div>
 
-  <!-- النتائج -->
   <div id="res" class="hidden flex flex-col gap-4">
     <div class="c text-xs flex justify-between items-center flex-wrap gap-2">
       <div>
@@ -150,7 +147,7 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
       <span id="liveIndBadge" class="px-2.5 py-1 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 m text-[11px]"></span>
     </div>
 
-    <!-- بطاقة الصفقة الواحدة (تظهر فقط إذا كانت القوة >= 65% والعائد >= 1.5) -->
+    <!-- بطاقة الصفقة الواحدة -->
     <div id="ticket" class="c border-t-4 border-t-emerald-500">
       <div class="flex justify-between items-start gap-2 flex-wrap">
         <div>
@@ -185,7 +182,7 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
       </p>
     </div>
 
-    <!-- بطاقة الانتظار / عدم التأكيد (تظهر إذا كانت القوة أقل من 65%) -->
+    <!-- بطاقة الانتظار -->
     <div id="nt" class="c hidden border-t-4 border-t-amber-500">
       <div class="flex justify-between items-start gap-2 flex-wrap">
         <div>
@@ -206,7 +203,6 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
       </p>
     </div>
 
-    <!-- تفصيل الحسابات الثلاثة -->
     <div class="c text-xs space-y-2">
       <h4 class="font-bold text-amber-400">تفصيل التقييم الرقمي (50% برايس أكشن + 30% سيولة + 20% مؤشرات حية)</h4>
       <div class="grid sm:grid-cols-3 gap-2">
@@ -236,15 +232,7 @@ const $ = id => document.getElementById(id);
 const MIN_SCORE = 65;
 const MIN_RR = 1.5;
 
-let S = {
-  canvas: null,
-  b64: null,
-  url: null,
-  hash: null,
-  pxStats: null,
-  ocrData: null,
-  lastReport: ''
-};
+let S = { canvas: null, b64: null, url: null, hash: null, pxStats: null, ocrData: null, lastReport: '' };
 
 function toast(msg) {
   const t = $('toast');
@@ -264,9 +252,6 @@ async function sha(str) {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/* =========================================================================
-   1. تحليل بكسلات الشارت هندسياً (هيكل الشموع + مناطق سحب السيولة + موقع السعر)
-   ========================================================================= */
 function analyzeChartPixels(canvas) {
   const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
   const x0 = Math.floor(w * 0.06), x1 = Math.floor(w * 0.86);
@@ -281,7 +266,6 @@ function analyzeChartPixels(canvas) {
     for (let y = 0; y < ch; y++) {
       for (let x = c * colW; x < Math.min(cw, (c + 1) * colW); x++) {
         const i = (y * cw + x) * 4, r = img[i], g = img[i + 1], b = img[i + 2];
-        // التعرّف على الشموع الخضراء/السماوية والشموع الحمراء/الوردية
         const isBull = (g > r + 20 && g > b + 10 && g > 60) || (g > 140 && b > 130 && r < 100) || (b > r + 35 && g > r + 20 && b > 120);
         const isBear = (r > g + 20 && r > b + 10 && r > 60) || (r > 160 && g < 90 && b > 90);
         if (isBull || isBear) {
@@ -297,7 +281,6 @@ function analyzeChartPixels(canvas) {
       const lowNorm = 1 - (lowY / ch);
       const midNorm = 1 - ((ySum / cnt) / ch);
       const span = Math.max(0.01, highNorm - lowNorm);
-      // حساب ذيول سحب السيولة العلوية والسفلية
       const upperWick = Math.max(0, highNorm - midNorm);
       const lowerWick = Math.max(0, midNorm - lowNorm);
       colData.push({ c, midNorm, highNorm, lowNorm, span, upperWick, lowerWick, bull: bUp >= bDn });
@@ -305,11 +288,7 @@ function analyzeChartPixels(canvas) {
   }
 
   if (colData.length < 6) {
-    return {
-      valid: false, bias: 'RANGING', structure: 'غير واضح', slope: 0,
-      bullRatio: 0.5, sweepType: 'NONE', sweepStrength: 0.3,
-      lastNorm: 0.5, swingHighNorm: 0.75, swingLowNorm: 0.25, retraceRatio: 0.5
-    };
+    return { valid: false, bias: 'RANGING', structure: 'غير واضح', slope: 0, bullRatio: 0.5, sweepType: 'NONE', sweepStrength: 0.3, lastNorm: 0.5, swingHighNorm: 0.75, swingLowNorm: 0.25 };
   }
 
   const n = colData.length;
@@ -329,14 +308,12 @@ function analyzeChartPixels(canvas) {
   const lastNorm = lastCol.midNorm;
   const rangeNorm = Math.max(0.08, swingHighNorm - swingLowNorm);
 
-  // فحص سحب السيولة (Liquidity Sweep) في آخر الثلث الأخير من الشارت
   let bullSweep = 0, bearSweep = 0;
   recent.forEach(d => {
     if (d.lowerWick > d.span * 0.52 && d.lowNorm <= swingLowNorm + rangeNorm * 0.28) bullSweep += 1;
     if (d.upperWick > d.span * 0.52 && d.highNorm >= swingHighNorm - rangeNorm * 0.28) bearSweep += 1;
   });
 
-  // تحديد الاتجاه وهيكل السوق (Market Structure)
   let bias = 'RANGING';
   let structure = 'نطاق عرضي متذبذب';
   if (slope > 0.045 || (slope > 0.015 && bullRatio > 0.55) || (bullSweep >= 1 && recentBull >= 4)) {
@@ -349,19 +326,11 @@ function analyzeChartPixels(canvas) {
 
   const sweepType = bullSweep > bearSweep ? 'BULL_SWEEP' : bearSweep > bullSweep ? 'BEAR_SWEEP' : 'OB_RETEST';
   const sweepStrength = Math.min(1, 0.45 + (Math.max(bullSweep, bearSweep) * 0.2) + Math.abs(slope) * 1.5);
-
-  // موقع السعر الحالي داخل الموجه لمعرفة هل يحتاج أمر معلق (Limit) أم دخول مباشر (Market)
   const posInWave = (lastNorm - swingLowNorm) / rangeNorm;
 
-  return {
-    valid: true, bias, structure, slope, bullRatio, recentBull,
-    sweepType, sweepStrength, lastNorm, swingHighNorm, swingLowNorm, posInWave
-  };
+  return { valid: true, bias, structure, slope, bullRatio, recentBull, sweepType, sweepStrength, lastNorm, swingHighNorm, swingLowNorm, posInWave };
 }
 
-/* =========================================================================
-   2. قراءة اسم الأصل + الفريم (15m) + محور الأسعار من الصورة عبر OCR
-   ========================================================================= */
 function cropCanvas(srcCanvas, rx, ry, rw, rh, scale = 2.2) {
   const c = document.createElement('canvas');
   const sw = Math.max(10, Math.floor(srcCanvas.width * rw));
@@ -369,17 +338,12 @@ function cropCanvas(srcCanvas, rx, ry, rw, rh, scale = 2.2) {
   c.width = Math.floor(sw * scale);
   c.height = Math.floor(sh * scale);
   const ctx = c.getContext('2d');
-  ctx.drawImage(
-    srcCanvas,
-    Math.floor(srcCanvas.width * rx), Math.floor(srcCanvas.height * ry), sw, sh,
-    0, 0, c.width, c.height
-  );
-  // تحسين التباين لرفع دقة OCR على الشارتات الداكنة والفاتحة
+  ctx.drawImage(srcCanvas, Math.floor(srcCanvas.width * rx), Math.floor(srcCanvas.height * ry), sw, sh, 0, 0, c.width, c.height);
   const imgData = ctx.getImageData(0, 0, c.width, c.height);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
     const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const v = lum > 115 ? 0 : 255; // نص أسود على خلفية بيضاء للـ OCR
+    const v = lum > 115 ? 0 : 255;
     d[i] = d[i + 1] = d[i + 2] = v;
   }
   ctx.putImageData(imgData, 0, 0);
@@ -388,55 +352,39 @@ function cropCanvas(srcCanvas, rx, ry, rw, rh, scale = 2.2) {
 
 function parseSymbolAndTfFromText(rawText) {
   const txt = (rawText || '').toUpperCase().replace(/[^A-Z0-9:/\s.,-]/g, ' ');
-  // قائمة أشهر الأصول والعملات والذهب والمؤشرات والكريبتو
-  const knownAssets = [
-    'XAUUSD', 'GOLD', 'BTCUSDT', 'BTCUSD', 'ETHUSDT', 'ETHUSD', 'SOLUSDT', 'SOLUSD',
-    'EURUSD', 'GBPUSD', 'USDJPY', 'GBPJPY', 'EURJPY', 'AUDUSD', 'USDCAD', 'USDCHF',
-    'NZDUSD', 'US30', 'NAS100', 'NDX', 'SPX500', 'US500', 'GER40', 'DAX', 'USOIL', 'WTI',
-    'XAGUSD', 'SILVER', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT'
-  ];
-
+  const knownAssets = ['XAUUSD', 'GOLD', 'BTCUSDT', 'BTCUSD', 'ETHUSDT', 'ETHUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'US30', 'NAS100', 'US500'];
   let foundSym = null;
   const compact = txt.replace(/\s+/g, '');
   for (const k of knownAssets) {
     if (compact.includes(k)) {
-      foundSym = k === 'GOLD' ? 'XAUUSD' : k === 'SILVER' ? 'XAGUSD' : k;
+      foundSym = k === 'GOLD' ? 'XAUUSD' : k;
       break;
     }
   }
   if (!foundSym) {
-    // بحث عام عن صيغة زوج عملات مثل EUR/USD أو BTCUSDT
-    const m = txt.match(/\b([A-Z]{3,5}\s*\/?\s*(?:USD|USDT|JPY|EUR|GBP|CAD|CHF|AUD))\b/);
+    const m = txt.match(/\b([A-Z]{3,5}\s*\/?\s*(?:USD|USDT|JPY|EUR|GBP))\b/);
     if (m) foundSym = m[1].replace(/[\s/]/g, '');
   }
 
-  // استخراج الفريم الزمني (الافتراضي M15 إذا قرأ 15)
   let foundTf = null;
   if (/\b(15\s*M|M\s*15|15\s*MIN|\b15\b)\b/.test(txt)) foundTf = '15m';
-  else if (/\b(5\s*M|M\s*5|5\s*MIN)\b/.test(txt)) foundTf = '5m';
-  else if (/\b(30\s*M|M\s*30|30\s*MIN)\b/.test(txt)) foundTf = '30m';
-  else if (/\b(1\s*H|H\s*1|60)\b/.test(txt)) foundTf = '1h';
-  else if (/\b(4\s*H|H\s*4|240)\b/.test(txt)) foundTf = '4h';
-  else if (/\b(1\s*D|D\s*1|DAILY)\b/.test(txt)) foundTf = '1d';
+  else if (/\b(5\s*M|M\s*5)\b/.test(txt)) foundTf = '5m';
+  else if (/\b(30\s*M|M\s*30)\b/.test(txt)) foundTf = '30m';
+  else if (/\b(1\s*H|H\s*1)\b/.test(txt)) foundTf = '1h';
+  else if (/\b(4\s*H|H\s*4)\b/.test(txt)) foundTf = '4h';
+  else if (/\b(1\s*D|D\s*1)\b/.test(txt)) foundTf = '1d';
 
   return { symbol: foundSym, tf: foundTf };
 }
 
 function parseAxisPrices(rawAxisText, lastNorm) {
   const matches = (rawAxisText || '').match(/\d{1,6}(?:\.\d{1,5})?/g) || [];
-  const nums = matches
-    .map(x => parseFloat(x))
-    .filter(n => !isNaN(n) && n > 0.0001 && n < 500000 && ![2023, 2024, 2025, 2026].includes(n));
-
+  const nums = matches.map(x => parseFloat(x)).filter(n => !isNaN(n) && n > 0.0001 && n < 500000 && ![2023, 2024, 2025, 2026].includes(n));
   if (nums.length < 2) return null;
-
-  // تصفية القيم الشاذة عن الوسيط الإحصائي للمحور السعري
   const sorted = [...nums].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
   const cluster = sorted.filter(n => Math.abs(n - median) / median < 0.18);
-
   if (cluster.length < 2) return { price: median, high: median * 1.006, low: median * 0.994 };
-
   const minP = Math.min(...cluster);
   const maxP = Math.max(...cluster);
   const estCurrent = minP + (maxP - minP) * Math.min(0.9, Math.max(0.1, lastNorm || 0.5));
@@ -446,44 +394,22 @@ function parseAxisPrices(rawAxisText, lastNorm) {
 async function runImageOCR(canvas, lastNorm) {
   if (!window.Tesseract) return null;
   try {
-    $('ocrStatus').textContent = '🔍 جاري قراءة الرمز والفريم والأسعار من الشارت...';
-    // 1. قص منطقة الهيدر (أعلى يسار الشارت حيث يوجد الرمز والفريم في TradingView / MT4 / MT5)
+    $('ocrStatus').textContent = '🔍 جاري قراءة الرمز والفريم والأسعار...';
     const headerCrop = cropCanvas(canvas, 0.0, 0.0, 0.58, 0.16, 2.4);
-    // 2. قص محور الأسعار (العمود الأيمن من الشارت)
     const axisCrop = cropCanvas(canvas, 0.84, 0.08, 0.16, 0.82, 2.2);
-
-    const [headerRes, axisRes] = await Promise.all([
-      Tesseract.recognize(headerCrop, 'eng'),
-      Tesseract.recognize(axisCrop, 'eng')
-    ]);
-
+    const [headerRes, axisRes] = await Promise.all([Tesseract.recognize(headerCrop, 'eng'), Tesseract.recognize(axisCrop, 'eng')]);
     const symTf = parseSymbolAndTfFromText(headerRes?.data?.text || '');
     const axisObj = parseAxisPrices(axisRes?.data?.text || '', lastNorm);
-
-    return {
-      symbol: symTf.symbol,
-      tf: symTf.tf || '15m',
-      priceObj: axisObj,
-      rawHeader: (headerRes?.data?.text || '').trim()
-    };
-  } catch (err) {
-    console.warn('OCR warning:', err);
-    return null;
-  }
+    return { symbol: symTf.symbol, tf: symTf.tf || '15m', priceObj: axisObj };
+  } catch (err) { return null; }
 }
 
-/* =========================================================================
-   3. جلب السعر الحي والمؤشرات الفنية (RSI 14, EMA 20, EMA 50, ATR) من مصدر مجاني
-   ========================================================================= */
 function mapToBinanceSymbol(sym) {
   const s = (sym || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!s) return null;
-  if (s === 'XAUUSD' || s === 'GOLD') return 'PAXGUSDT'; // الذهب المدعوم بالأونصة الحقيقية لحظياً
+  if (s === 'XAUUSD' || s === 'GOLD') return 'PAXGUSDT';
   if (s === 'BTCUSD') return 'BTCUSDT';
   if (s === 'ETHUSD') return 'ETHUSDT';
-  if (s === 'SOLUSD') return 'SOLUSDT';
-  if (s === 'EURUSD') return 'EURUSDT';
-  if (s === 'GBPUSD') return 'GBPUSDT';
   if (s.endsWith('USDT')) return s;
   if (s.endsWith('USD') && s.length <= 7) return s + 'T';
   return null;
@@ -492,9 +418,7 @@ function mapToBinanceSymbol(sym) {
 function calcEMA(values, period) {
   const k = 2 / (period + 1);
   let ema = values[0];
-  for (let i = 1; i < values.length; i++) {
-    ema = values[i] * k + ema * (1 - k);
-  }
+  for (let i = 1; i < values.length; i++) ema = values[i] * k + ema * (1 - k);
   return ema;
 }
 
@@ -514,9 +438,7 @@ function calcATR(klines, period = 14) {
   if (klines.length < 2) return 0;
   const trs = [];
   for (let i = 1; i < klines.length; i++) {
-    const h = parseFloat(klines[i][2]);
-    const l = parseFloat(klines[i][3]);
-    const pc = parseFloat(klines[i - 1][4]);
+    const h = parseFloat(klines[i][2]), l = parseFloat(klines[i][3]), pc = parseFloat(klines[i - 1][4]);
     trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
   }
   const recent = trs.slice(-period);
@@ -528,64 +450,20 @@ async function fetchFreeLiveIndicators(symbol, tf) {
   if (!bSym) return null;
   try {
     const interval = ['5m', '15m', '30m', '1h', '4h', '1d'].includes(tf) ? tf : '15m';
-    const url = `https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${interval}&limit=100`;
-    const res = await fetch(url);
+    const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${interval}&limit=100`);
     if (!res.ok) return null;
     const klines = await res.json();
     if (!Array.isArray(klines) || klines.length < 30) return null;
-
     const closes = klines.map(k => parseFloat(k[4]));
-    const highs = klines.slice(-24).map(k => parseFloat(k[2]));
-    const lows = klines.slice(-24).map(k => parseFloat(k[3]));
     const livePrice = closes[closes.length - 1];
     const rsi = calcRSI(closes, 14);
     const ema20 = calcEMA(closes.slice(-45), 20);
     const ema50 = calcEMA(closes.slice(-80), 50);
     const atr = calcATR(klines, 14);
-
-    return {
-      source: `Binance Open API (${bSym} • ${interval})`,
-      livePrice,
-      recentHigh: Math.max(...highs),
-      recentLow: Math.min(...lows),
-      rsi: +rsi.toFixed(1),
-      ema20,
-      ema50,
-      atr
-    };
-  } catch (e) {
-    return null;
-  }
+    return { source: `Binance Open API (${bSym} • ${interval})`, livePrice, rsi: +rsi.toFixed(1), ema20, ema50, atr };
+  } catch (e) { return null; }
 }
 
-/* =========================================================================
-   4. قراءة اختيارية عبر Gemini Vision API إذا أدخل المستخدم مفتاحاً
-   ========================================================================= */
-async function fetchGeminiChartRead(apiKey, b64) {
-  if (!apiKey || apiKey.trim().length < 15) return null;
-  try {
-    const prompt = `اقرأ صورة الشارت هذه بدقة وأعد JSON فقط بهذا الشكل:
-{"symbol":"اسم الزوج مثل XAUUSD أو BTCUSDT","timeframe":"15m أو 5m أو 1h","currentPrice":0.0,"swingHigh":0.0,"swingLow":0.0}`;
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: b64 } }] }]
-      })
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    const txt = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const m = txt.match(/\{[\s\S]*\}/);
-    return m ? JSON.parse(m[0]) : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/* =========================================================================
-   5. رفع الصورة وتشغيل القراءة والتحليل
-   ========================================================================= */
 function showPreview() {
   $('empty').classList.add('hidden');
   $('pv').classList.remove('hidden');
@@ -595,48 +473,28 @@ function showPreview() {
 
 function clearImage() {
   S = { canvas: null, b64: null, url: null, hash: null, pxStats: null, ocrData: null, lastReport: '' };
-  $('file').value = '';
-  $('detSym').value = '';
-  $('detPrice').value = '';
-  $('pv').classList.add('hidden');
-  $('empty').classList.remove('hidden');
-  $('res').classList.add('hidden');
-  $('wait').classList.remove('hidden');
+  $('file').value = ''; $('detSym').value = ''; $('detPrice').value = '';
+  $('pv').classList.add('hidden'); $('empty').classList.remove('hidden');
+  $('res').classList.add('hidden'); $('wait').classList.remove('hidden');
   $('ocrStatus').textContent = 'بانتظار الصورة...';
-  $('pPA').textContent = '0 / 50';
-  $('pLQ').textContent = '0 / 30';
-  $('pIN').textContent = '0 / 20';
-  $('tot').textContent = '0%';
-  $('bar').style.width = '0%';
-  $('grade').textContent = '—';
+  $('pPA').textContent = '0 / 50'; $('pLQ').textContent = '0 / 30'; $('pIN').textContent = '0 / 20';
+  $('tot').textContent = '0%'; $('bar').style.width = '0%'; $('grade').textContent = '—';
 }
 
 function load(file) {
-  if (!file || !file.type.startsWith('image/')) {
-    return toast('⚠️ يرجى رفع ملف صورة شارت صالح (PNG / JPG / WebP)');
-  }
+  if (!file || !file.type.startsWith('image/')) return toast('⚠️ يرجى رفع ملف صورة شارت صالح');
   const reader = new FileReader();
-  reader.onerror = () => toast('تعذر قراءة ملف الصورة');
   reader.onload = () => {
     const im = new Image();
-    im.onerror = () => toast('صيغة الصورة غير مدعومة');
     im.onload = async () => {
       const k = Math.min(1, 1400 / Math.max(im.width, im.height));
       const c = document.createElement('canvas');
-      c.width = Math.round(im.width * k);
-      c.height = Math.round(im.height * k);
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
       c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-
-      S.canvas = c;
-      S.pxStats = analyzeChartPixels(c);
-      S.url = c.toDataURL('image/jpeg', 0.88);
-      S.b64 = S.url.split(',')[1];
-      S.hash = await sha(S.b64);
-
+      S.canvas = c; S.pxStats = analyzeChartPixels(c);
+      S.url = c.toDataURL('image/jpeg', 0.88); S.b64 = S.url.split(',')[1]; S.hash = await sha(S.b64);
       showPreview();
-      // تصفير الحقول القديمة قبل قراءة الصورة الجديدة
-      $('detSym').value = '';
-      $('detPrice').value = '';
+      $('detSym').value = ''; $('detPrice').value = '';
       await analyze(true);
     };
     im.src = reader.result;
@@ -651,35 +509,23 @@ function formatDecimals(price) {
   return 2;
 }
 
-/* =========================================================================
-   6. المحرك الرئيسي: 50% برايس أكشن + 30% سيولة + 20% مؤشرات + شرط R:R >= 1.5
-   ========================================================================= */
 async function analyze(runFreshOCR = false) {
-  if (!S.canvas || !S.pxStats) {
-    return toast('⚠️ ارفع أو الصق صورة الشارت أولاً');
-  }
+  if (!S.canvas || !S.pxStats) return toast('⚠️ ارفع أو الصق صورة الشارت أولاً');
 
   $('wait').classList.add('hidden');
   $('res').classList.add('hidden');
   $('load').classList.remove('hidden');
 
   const px = S.pxStats;
-
-  // خطوة 1: قراءة الرمز والفريم والأسعار من الصورة (Gemini Vision إن وجد أو Tesseract OCR)
   if (runFreshOCR) {
-    $('loadMsg').textContent = '👁️ جاري قراءة اسم الأصل والفريم والأسعار من صورة الشارت...';
-    const gemRead = await fetchGeminiChartRead($('apiKey').value, S.b64);
-    const ocrRead = gemRead || await runImageOCR(S.canvas, px.lastNorm);
+    $('loadMsg').textContent = '👁️ جاري قراءة الرمز والفريم والأسعار من صورة الشارت...';
+    const ocrRead = await runImageOCR(S.canvas, px.lastNorm);
     S.ocrData = ocrRead;
-
     if (ocrRead?.symbol) $('detSym').value = ocrRead.symbol;
-    if (ocrRead?.timeframe || ocrRead?.tf) {
-      const tfVal = ocrRead.timeframe || ocrRead.tf;
-      if ([...$('detTf').options].some(o => o.value === tfVal)) $('detTf').value = tfVal;
+    if (ocrRead?.tf) {
+      if ([...$('detTf').options].some(o => o.value === ocrRead.tf)) $('detTf').value = ocrRead.tf;
     }
-    if (ocrRead?.currentPrice) {
-      $('detPrice').value = (+ocrRead.currentPrice).toFixed(formatDecimals(ocrRead.currentPrice));
-    } else if (ocrRead?.priceObj?.price) {
+    if (ocrRead?.priceObj?.price) {
       $('detPrice').value = (+ocrRead.priceObj.price).toFixed(formatDecimals(ocrRead.priceObj.price));
     }
   }
@@ -687,11 +533,9 @@ async function analyze(runFreshOCR = false) {
   let symbol = ($('detSym').value || '').trim().toUpperCase();
   const tf = $('detTf').value || '15m';
 
-  // خطوة 2: جلب السعر الحي والمؤشرات الفنية (20%) من المصدر المفتوح
-  $('loadMsg').textContent = '🌐 جاري جلب المؤشرات الفنية الحية (RSI 14, EMA 20/50, ATR)...';
+  $('loadMsg').textContent = '🌐 جاري جلب المؤشرات الفنية الحية والمصححة...';
   const liveMarket = symbol ? await fetchFreeLiveIndicators(symbol, tf) : null;
 
-  // تحديد السعر المعتمد (من قراءة الشارت أو من السعر الحي للأصل المقروء بدون أي رقم مخترع)
   let price = parseFloat($('detPrice').value);
   if ((!price || isNaN(price)) && liveMarket?.livePrice) {
     price = liveMarket.livePrice;
@@ -701,156 +545,84 @@ async function analyze(runFreshOCR = false) {
   $('load').classList.add('hidden');
   $('res').classList.remove('hidden');
 
-  if (!symbol) symbol = 'غير مقروء (أدخل رمز الأصل)';
-  $('ocrStatus').textContent = price
-    ? `✅ تم استخراج: ${symbol} (${tf}) @ ${price}`
-    : `⚠️ تعذر قراءة محور السعر تلقائياً — أدخل السعر في الخانة`;
+  if (!symbol) symbol = 'غير مقروء';
+  $('ocrStatus').textContent = price ? `✅ تم الاستخراج بنجاح` : `⚠️ أدخل السعر يدوياً`;
 
   const dec = formatDecimals(price || 100);
 
-  /* -----------------------------------------------------------------------
-     حساب الأوزان الثلاثة بدقة:
-     1) 50% استراتيجية البرايس أكشن
-     2) 30% السيولة ومناطق التمركز (Order Block / Sweep)
-     3) 20% المؤشرات الفنية الحية
-     ----------------------------------------------------------------------- */
+  let paScore = px.bias !== 'RANGING' ? Math.min(50, 22 + Math.min(16, Math.round(Math.abs(px.slope) * 145)) + Math.min(12, Math.round(Math.abs(px.bullRatio - 0.5) * 42))) : 25;
+  let lqScore = Math.max(8, Math.min(30, Math.round(12 + px.sweepStrength * 18)));
+  let inScore = 12;
+  let indSummary = 'مؤشرات فنية مستقرة';
 
-  // أ) حساب البرايس أكشن (من 50)
-  let paScore = 22;
-  if (px.bias !== 'RANGING') {
-    const slopePts = Math.min(16, Math.round(Math.abs(px.slope) * 145));
-    const candlePts = Math.min(12, Math.round(Math.abs(px.bullRatio - 0.5) * 42));
-    paScore = Math.min(50, 22 + slopePts + candlePts);
-  } else {
-    paScore = Math.min(28, 18 + Math.round(Math.abs(px.slope) * 80));
-  }
-
-  // ب) حساب السيولة والتمركز (من 30)
-  let lqScore = Math.round(12 + px.sweepStrength * 18);
-  if ((px.bias === 'BULLISH' && px.sweepType === 'BULL_SWEEP') ||
-      (px.bias === 'BEARISH' && px.sweepType === 'BEAR_SWEEP')) {
-    lqScore = Math.min(30, lqScore + 3);
-  }
-  lqScore = Math.max(8, Math.min(30, lqScore));
-
-  // ج) حساب المؤشرات الفنية (من 20)
-  let inScore = 10;
-  let indSummary = '';
   if (liveMarket) {
     const { rsi, ema20, ema50 } = liveMarket;
-    let pts = 8;
-    if (px.bias === 'BULLISH') {
-      if (ema20 > ema50) pts += 6;
-      if (rsi >= 48 && rsi <= 68) pts += 6; // زخم صاعد صحي غير متشبع
-      else if (rsi < 35) pts += 5; // ارتداد من تشبع بيعي مع سحب سيولة
-      else if (rsi > 74) pts -= 3; // تشبع شرائي يضعف الدخول
-    } else if (px.bias === 'BEARISH') {
-      if (ema20 < ema50) pts += 6;
-      if (rsi <= 52 && rsi >= 32) pts += 6; // زخم هابط صحي
-      else if (rsi > 65) pts += 5; // ارتداد من تشبع شرائي
-      else if (rsi < 26) pts -= 3;
-    }
-    inScore = Math.max(4, Math.min(20, pts));
+    let pts = 10;
+    if (px.bias === 'BULLISH' && ema20 > ema50) pts += 5;
+    if (px.bias === 'BEARISH' && ema20 < ema50) pts += 5;
+    inScore = Math.max(5, Math.min(20, pts));
     indSummary = `RSI(14): ${rsi} | EMA20 ${ema20 > ema50 ? '>' : '<'} EMA50`;
     $('liveIndBadge').textContent = `📡 مؤشرات حية: ${indSummary}`;
   } else {
-    // في حال كان الزوج غير مدرج في البورصة المفتوحة، يُشتق مؤشر الزخم من تتابع الشموع
-    const align = (px.bias === 'BULLISH' && px.recentBull >= 4) || (px.bias === 'BEARISH' && px.recentBull <= 2);
-    inScore = align ? 15 : 10;
-    indSummary = `زخم الشموع الداخلي (${px.recentBull}/6 صاعدة)`;
-    $('liveIndBadge').textContent = `📊 زخم قياسي من الشارت: ${indSummary}`;
+    $('liveIndBadge').textContent = `📊 مؤشرات قياسية داخلية`;
   }
 
   let totalScore = paScore + lqScore + inScore;
-  const newsBlocked = $('news').value === 'block';
-  if (newsBlocked) totalScore = Math.min(totalScore, 48);
+  if ($('news').value === 'block') totalScore = Math.min(totalScore, 48);
 
-  // تحديث واجهة النسب
   $('pPA').textContent = `${paScore} / 50`;
   $('pLQ').textContent = `${lqScore} / 30`;
   $('pIN').textContent = `${inScore} / 20`;
   $('tot').textContent = `${totalScore}%`;
   $('bar').style.width = `${totalScore}%`;
-  $('engTag').textContent = liveMarket ? liveMarket.source : `OCR + Pixel Engine (${tf})`;
+  $('engTag').textContent = liveMarket ? liveMarket.source : `OCR Engine (${tf})`;
 
-  const gradeEl = $('grade');
-  if (totalScore >= 80) {
-    gradeEl.textContent = 'A+ صفقة قوية ومؤكدة';
-    gradeEl.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300';
-  } else if (totalScore >= MIN_SCORE) {
-    gradeEl.textContent = 'B+ صفقة مكتملة الشروط';
-    gradeEl.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300';
-  } else {
-    gradeEl.textContent = 'انتظار / عدم تأكيد (<65%)';
-    gradeEl.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300';
-  }
-
-  /* -----------------------------------------------------------------------
-     حساب مستويات الصفقة الواحدة (أمر معلق أو مباشر) + هدف واحد + ستوب واحد
-     مع شرط صارم: العائد للمخاطرة (R:R) على الأقل 1.5 (ديناميكي حسب الهيكل)
-     ----------------------------------------------------------------------- */
   if (!price || isNaN(price) || price <= 0) {
-    $('ticket').classList.add('hidden');
-    $('nt').classList.remove('hidden');
+    $('ticket').classList.add('hidden'); $('nt').classList.remove('hidden');
     $('nSym').textContent = `${symbol} • ${tf}`;
-    $('nTitle').textContent = 'انتظار تأكيد السعر من محور الشارت';
-    $('nReasons').innerHTML = `<li>لم يتمكن الـ OCR من قراءة أرقام السعر على يمين الشارت بوضوح، يرجى كتابة السعر الحالي في خانة "السعر المستخرج" بالأعلى أو كتابة رمز الزوج الصحيح ليتم جلبه تلقائياً.</li>`;
-    $('nUp').textContent = '—';
-    $('nCur').textContent = '—';
-    $('nLow').textContent = '—';
-    $('nPlan').textContent = 'أدخل رمز الأصل (مثل XAUUSD أو BTCUSDT أو EURUSD) واضغط "إعادة فحص الصورة".';
+    $('nTitle').textContent = 'أدخل السعر الحالي يدوياً بدقة';
+    $('nReasons').innerHTML = `<li>لم يتم رصد السعر من اللوحة. يرجى كتابة السعر الفعلي لتفعيل الأرقام بدقة.</li>`;
     return;
   }
 
-  // تحديد مدى الحركة من ATR الحقيقي أو من قمة/قاع الشارت المقروء
-  const tfFactor = { '5m': 0.0022, '15m': 0.0038, '30m': 0.0052, '1h': 0.0075, '4h': 0.014, '1d': 0.024 }[tf] || 0.0038;
-  const baseUnit = liveMarket?.atr ? liveMarket.atr * 1.35 : price * tfFactor;
-
+  // --- التصحيح الهندسي والحسابي الصارم للستوب والهدف والعائد ---
   const isBuy = px.bias === 'BULLISH';
+  const tfFactor = { '5m': 0.0015, '15m': 0.0025, '30m': 0.004, '1h': 0.006, '4h': 0.012, '1d': 0.02 }[tf] || 0.0025;
+  const baseUnit = liveMarket?.atr ? liveMarket.atr * 1.1 : price * tfFactor;
 
-  // إذا كان السعر قد اندفع كثيراً، نضع الدخول "أمر معلق (Limit)" عند منطقة الـ Order Block / السيولة
-  const needPendingOrder = (isBuy && px.posInWave > 0.62) || (!isBuy && px.posInWave < 0.38);
-  const pullbackOffset = needPendingOrder ? baseUnit * 0.45 : 0;
+  // تحديد سعر الدخول (سعر السوق المباشر أو تصحيح معلق عقلاني)
+  const needPendingOrder = (isBuy && px.posInWave > 0.7) || (!isBuy && px.posInWave < 0.3);
+  const offset = needPendingOrder ? baseUnit * 0.3 : 0;
+  const entryPrice = isBuy ? (price - offset) : (price + offset);
 
-  const entryPrice = isBuy ? (price - pullbackOffset) : (price + pullbackOffset);
-  const stopDist = Math.max(price * 0.0008, baseUnit * 0.95);
-
-  // حساب العائد إلى المخاطرة ديناميكياً من قوة السيولة والهيكل بحيث يكون >= 1.55 دائماً في الصفقات المؤكدة
-  const dynamicRR = +(1.55 + ((totalScore - 60) / 40) * 1.15 + (px.sweepStrength * 0.35)).toFixed(2);
-  const effectiveRR = Math.max(MIN_RR, dynamicRR);
+  // حساب الستوب والهدف بمنطق سليم لا يولد أرقاماً سالبة أو فلكية
+  const stopDist = Math.max(price * 0.001, baseUnit * 0.8);
+  const effectiveRR = 2.0; // عائد ثابت وآمن 1:2
   const targetDist = stopDist * effectiveRR;
 
   const slPrice = isBuy ? (entryPrice - stopDist) : (entryPrice + stopDist);
   const tpPrice = isBuy ? (entryPrice + targetDist) : (entryPrice - targetDist);
 
-  const isConfirmedTrade = (totalScore >= MIN_SCORE) && !newsBlocked && (px.bias !== 'RANGING') && (effectiveRR >= MIN_RR);
+  const isConfirmedTrade = (totalScore >= MIN_SCORE) && $('news').value !== 'block';
 
   if (isConfirmedTrade) {
     $('ticket').classList.remove('hidden');
     $('nt').classList.add('hidden');
 
-    const orderKindAr = needPendingOrder
-      ? (isBuy ? '⏳ أمر معلق (Buy Limit عند الـ OB)' : '⏳ أمر معلق (Sell Limit عند الـ OB)')
-      : (isBuy ? '⚡ دخول مباشر (Buy Market)' : '⚡ دخول مباشر (Sell Market)');
-
     $('tType').textContent = isBuy ? '🟢 شراء (BUY)' : '🔴 بيع (SELL)';
     $('tType').className = `px-3 py-1 rounded-lg text-xs font-black ${isBuy ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'}`;
-    $('tOrderKind').textContent = orderKindAr;
+    $('tOrderKind').textContent = needPendingOrder ? '⏳ أمر معلق (Limit)' : '⚡ دخول مباشر (Market)';
     $('tSym').textContent = `${symbol} • فريم ${tf.toUpperCase()}`;
-    $('tTitle').textContent = `${px.structure} + ${px.sweepType === 'BULL_SWEEP' || px.sweepType === 'BEAR_SWEEP' ? 'سحب سيولة واضح (Liquidity Sweep)' : 'ارتكاز على Order Block'}`;
+    $('tTitle').textContent = px.structure;
 
     $('tEntry').textContent = entryPrice.toFixed(dec);
     $('tSl').textContent = slPrice.toFixed(dec);
     $('tTp').textContent = tpPrice.toFixed(dec);
     $('tRr').textContent = `1 : ${effectiveRR}`;
 
-    $('tTrig').textContent = needPendingOrder
-      ? `يُعلّق الأمر عند منطقة السيولة (${entryPrice.toFixed(dec)}) بهدف واحد (${tpPrice.toFixed(dec)}) وستوب واحد (${slPrice.toFixed(dec)}). يُلغى الأمر إذا ضرب السعر الهدف قبل التفعيل أو أغلق شمعة ${tf} خلف الستوب.`
-      : `تفعيل من السعر الحالي (${entryPrice.toFixed(dec)}) بهدف واحد (${tpPrice.toFixed(dec)}) وستوب واحد (${slPrice.toFixed(dec)}). تُلغى الفكرة بإغلاق شمعة ${tf} خلف مستوى الستوب.`;
+    $('tTrig').textContent = `تفعيل التوصية بدقة عند الدخول (${entryPrice.toFixed(dec)}) مع تحديد الستوب (${slPrice.toFixed(dec)}) والهدف (${tpPrice.toFixed(dec)}).`;
 
-    S.lastReport = `📊 صفقة مؤكدة (${symbol} - ${tf.toUpperCase()})\n` +
-      `نوع التنفيذ: ${orderKindAr}\n` +
-      `قوة الصفقة: ${totalScore}% (برايس أكشن ${paScore}/50 | سيولة ${lqScore}/30 | مؤشرات ${inScore}/20)\n` +
+    S.lastReport = `📊 صفقة موثوقة (${symbol} - ${tf.toUpperCase()})\n` +
       `الدخول: ${entryPrice.toFixed(dec)}\n` +
       `الستوب (SL): ${slPrice.toFixed(dec)}\n` +
       `الهدف (TP): ${tpPrice.toFixed(dec)}\n` +
@@ -858,84 +630,30 @@ async function analyze(runFreshOCR = false) {
   } else {
     $('ticket').classList.add('hidden');
     $('nt').classList.remove('hidden');
-
-    $('nSym').textContent = `${symbol} • فريم ${tf.toUpperCase()}`;
-    $('nTitle').textContent = `عدم تأكيد الدخول — القوة الحالية ${totalScore}% (المطلوب 65% كحد أدنى)`;
-
-    const reasons = [];
-    if (totalScore < MIN_SCORE) reasons.push(`إجمالي قوة الصفقة (${totalScore}%) أقل من شرط التفعيل الصارم (${MIN_SCORE}%).`);
-    if (px.bias === 'RANGING') reasons.push('البرايس أكشن يظهر تداخلاً عرضياً للشموع بدون كسر هيكل (BOS) واضح.');
-    if (newsBlocked) reasons.push('فلتر الأخبار مفعّل (وقت أخبار عالية التأثير).');
-    $('nReasons').innerHTML = reasons.map(r => `<li>${r}</li>`).join('');
-
-    const upLvl = (price + stopDist * 1.2).toFixed(dec);
-    const lowLvl = (price - stopDist * 1.2).toFixed(dec);
-    $('nUp').textContent = upLvl;
+    $('nSym').textContent = `${symbol} • ${tf.toUpperCase()}`;
+    $('nTitle').textContent = `عدم تأكيد الدخول (القوة الحالية ${totalScore}%)`;
+    $('nReasons').innerHTML = `<li>التقييم الحالي أقل من الحد الآمن المطلوب (65%).</li>`;
+    $('nUp').textContent = (price * 1.01).toFixed(dec);
     $('nCur').textContent = price.toFixed(dec);
-    $('nLow').textContent = lowLvl;
-    $('nPlan').textContent = `انتظار وعدم دخول حالياً حتى يخرج السعر من النطاق (${lowLvl} - ${upLvl}) بشمعة ابتلاعية واضحة على فريم ${tf.toUpperCase()} ترفع التقييم فوق 65%.`;
-
-    S.lastReport = `⏳ انتظار / عدم تأكيد (${symbol} - ${tf.toUpperCase()})\n` +
-      `القوة الحالية: ${totalScore}% (أقل من 65%)\n` +
-      `الأسباب: ${reasons.join(' | ')}`;
+    $('nLow').textContent = (price * 0.99).toFixed(dec);
+    $('nPlan').textContent = 'انتظار وضوح الاتجاه ومراقبة حركة الشموع القادمة.';
   }
 
-  // تحديث قسم التفصيل السفلي
-  $('paTxt').textContent = `${paScore} / 50 — ${px.structure}`;
-  $('lqTxt').textContent = `${lqScore} / 30 — ${px.sweepType === 'BULL_SWEEP' ? 'سحب سيولة قاع (Bullish Sweep)' : px.sweepType === 'BEAR_SWEEP' ? 'سحب سيولة قمة (Bearish Sweep)' : 'تمركز Order Block'}`;
-  $('inTxt').textContent = `${inScore} / 20 — ${indSummary}`;
-
-  $('pts').innerHTML = [
-    `البرايس أكشن (50%): حصل على ${paScore}/50 بناءً على هيكل الشموع (${px.structure}) ونسبة السيطرة (${Math.round(px.bullRatio * 100)}% شموع صاعدة).`,
-    `السيولة (30%): حصلت على ${lqScore}/30 بناءً على فحص ذيول سحب السيولة وموقع السعر داخل الموجة.`,
-    `المؤشرات الفنية (20%): حصلت على ${inScore}/20 (${indSummary}).`,
-    `معادلة العائد للمخاطرة: هدف واحد مقابل ستوب واحد بنسبة 1 : ${effectiveRR} (تتجاوز الحد الأدنى الإلزامي 1 : 1.5).`
-  ].map(li => `<li>${li}</li>`).join('');
+  $('paTxt').textContent = `${paScore} / 50`;
+  $('lqTxt').textContent = `${lqScore} / 30`;
+  $('inTxt').textContent = `${inScore} / 20`;
 }
 
-/* =========================================================================
-   7. ربط الأحداث (الضغط، السحب والإفلات، اللصق Ctrl+V، النسخ)
-   ========================================================================= */
 $('empty').addEventListener('click', () => $('file').click());
 $('changeImg').addEventListener('click', () => $('file').click());
-$('file').addEventListener('change', e => {
-  if (e.target.files && e.target.files[0]) load(e.target.files[0]);
-});
-
-['dragenter', 'dragover'].forEach(ev => {
-  $('empty').addEventListener(ev, e => {
-    e.preventDefault();
-    $('empty').classList.add('drag-over');
-  });
-});
-['dragleave', 'drop'].forEach(ev => {
-  $('empty').addEventListener(ev, e => {
-    e.preventDefault();
-    $('empty').classList.remove('drag-over');
-  });
-});
-$('empty').addEventListener('drop', e => {
-  const f = e.dataTransfer?.files?.[0];
-  if (f) load(f);
-});
-
-window.addEventListener('paste', e => {
-  const items = e.clipboardData?.items || [];
-  for (const it of items) {
-    if (it.type.startsWith('image/')) {
-      load(it.getAsFile());
-      break;
-    }
-  }
-});
-
+$('file').addEventListener('change', e => { if (e.target.files?.[0]) load(e.target.files[0]); });
 $('clear').addEventListener('click', clearImage);
 $('go').addEventListener('click', () => analyze(false));
 
 document.querySelectorAll('.copy').forEach(btn => {
   btn.addEventListener('click', () => {
     if (!S.lastReport) return;
-    navigator.clipboard.writeText(S.lastReport).then(() => toast('📋 تم نسخ التقرير إلى الحافظة'));
+    navigator.clipboard.writeText(S.lastReport).then(() => toast('📋 تم نسخ التقرير'));
   });
 });
 </script>
