@@ -57,12 +57,12 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
     <div class="mt-3 pt-3 border-t border-slate-800">
       <div class="flex justify-between items-center mb-1.5">
         <span class="text-[11px] text-slate-300 font-bold">البيانات المقروءة من الشارت والسوق الحي:</span>
-        <span class="text-[10px] text-slate-400">يمكنك تعديل الرمز إذا كان خط الشارت غير واضح</span>
+        <span class="text-[10px] text-slate-400">يمكنك تعديل الرمز أو السعر يدوياً بكل فتره</span>
       </div>
       <div class="grid grid-cols-3 gap-2 text-center text-xs">
         <div class="b">
           <span class="text-[11px] text-slate-400 block mb-1">الأصل المقروء</span>
-          <input id="detSym" class="m text-amber-400 text-center font-bold !p-1 !text-xs" placeholder="يُقرأ من الصورة">
+          <input id="detSym" class="m text-amber-400 text-center font-bold !p-1 !text-xs" placeholder="مثال: XAUUSD">
         </div>
         <div class="b">
           <span class="text-[11px] text-slate-400 block mb-1">الفريم المقروء</span>
@@ -76,8 +76,8 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
           </select>
         </div>
         <div class="b">
-          <span class="text-[11px] text-slate-400 block mb-1">السعر المستخرج/الحي</span>
-          <input id="detPrice" type="number" step="any" class="m text-cyan-400 text-center font-bold !p-1 !text-xs" placeholder="يُقرأ تلقائياً">
+          <span class="text-[11px] text-slate-400 block mb-1">السعر الحالي الدقيق</span>
+          <input id="detPrice" type="number" step="any" class="m text-cyan-400 text-center font-bold !p-1 !text-xs" placeholder="أدخل السعر الحقيقي">
         </div>
       </div>
     </div>
@@ -377,30 +377,24 @@ function parseSymbolAndTfFromText(rawText) {
   return { symbol: foundSym, tf: foundTf };
 }
 
-function parseAxisPrices(rawAxisText, lastNorm) {
+function parseAxisPrices(rawAxisText) {
   const matches = (rawAxisText || '').match(/\d{1,6}(?:\.\d{1,5})?/g) || [];
   const nums = matches.map(x => parseFloat(x)).filter(n => !isNaN(n) && n > 0.0001 && n < 500000 && ![2023, 2024, 2025, 2026].includes(n));
-  if (nums.length < 2) return null;
+  if (nums.length === 0) return null;
   const sorted = [...nums].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const cluster = sorted.filter(n => Math.abs(n - median) / median < 0.18);
-  if (cluster.length < 2) return { price: median, high: median * 1.006, low: median * 0.994 };
-  const minP = Math.min(...cluster);
-  const maxP = Math.max(...cluster);
-  const estCurrent = minP + (maxP - minP) * Math.min(0.9, Math.max(0.1, lastNorm || 0.5));
-  return { price: estCurrent, high: maxP, low: minP };
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
-async function runImageOCR(canvas, lastNorm) {
+async function runImageOCR(canvas) {
   if (!window.Tesseract) return null;
   try {
-    $('ocrStatus').textContent = '🔍 جاري قراءة الرمز والفريم والأسعار...';
+    $('ocrStatus').textContent = '🔍 جاري قراءة الرمز والفريم والسعر بدقة...';
     const headerCrop = cropCanvas(canvas, 0.0, 0.0, 0.58, 0.16, 2.4);
     const axisCrop = cropCanvas(canvas, 0.84, 0.08, 0.16, 0.82, 2.2);
     const [headerRes, axisRes] = await Promise.all([Tesseract.recognize(headerCrop, 'eng'), Tesseract.recognize(axisCrop, 'eng')]);
     const symTf = parseSymbolAndTfFromText(headerRes?.data?.text || '');
-    const axisObj = parseAxisPrices(axisRes?.data?.text || '', lastNorm);
-    return { symbol: symTf.symbol, tf: symTf.tf || '15m', priceObj: axisObj };
+    const detectedPrice = parseAxisPrices(axisRes?.data?.text || '');
+    return { symbol: symTf.symbol, tf: symTf.tf || '15m', price: detectedPrice };
   } catch (err) { return null; }
 }
 
@@ -518,24 +512,25 @@ async function analyze(runFreshOCR = false) {
 
   const px = S.pxStats;
   if (runFreshOCR) {
-    $('loadMsg').textContent = '👁️ جاري قراءة الرمز والفريم والأسعار من صورة الشارت...';
-    const ocrRead = await runImageOCR(S.canvas, px.lastNorm);
+    $('loadMsg').textContent = '👁️ جاري قراءة الرمز والفريم والسعر من الشارت...';
+    const ocrRead = await runImageOCR(S.canvas);
     S.ocrData = ocrRead;
     if (ocrRead?.symbol) $('detSym').value = ocrRead.symbol;
     if (ocrRead?.tf) {
       if ([...$('detTf').options].some(o => o.value === ocrRead.tf)) $('detTf').value = ocrRead.tf;
     }
-    if (ocrRead?.priceObj?.price) {
-      $('detPrice').value = (+ocrRead.priceObj.price).toFixed(formatDecimals(ocrRead.priceObj.price));
+    if (ocrRead?.price) {
+      $('detPrice').value = (+ocrRead.price).toFixed(formatDecimals(ocrRead.price));
     }
   }
 
   let symbol = ($('detSym').value || '').trim().toUpperCase();
   const tf = $('detTf').value || '15m';
 
-  $('loadMsg').textContent = '🌐 جاري جلب المؤشرات الفنية الحية والمصححة...';
+  $('loadMsg').textContent = '🌐 جاري جلب المؤشرات الفنية الحية والأسعار المطابقة...';
   const liveMarket = symbol ? await fetchFreeLiveIndicators(symbol, tf) : null;
 
+  // الاعتماد الأساسي على السعر المدخل أو المكتشف من الشارت، وإن لم يوجد نأخذ السعر الحي للأصل
   let price = parseFloat($('detPrice').value);
   if ((!price || isNaN(price)) && liveMarket?.livePrice) {
     price = liveMarket.livePrice;
@@ -545,8 +540,8 @@ async function analyze(runFreshOCR = false) {
   $('load').classList.add('hidden');
   $('res').classList.remove('hidden');
 
-  if (!symbol) symbol = 'غير مقروء';
-  $('ocrStatus').textContent = price ? `✅ تم الاستخراج بنجاح` : `⚠️ أدخل السعر يدوياً`;
+  if (!symbol) symbol = 'أصل مخصص';
+  $('ocrStatus').textContent = price ? `✅ تم القراءة بنجاح` : `⚠️ أدخل السعر الحقيقي`;
 
   const dec = formatDecimals(price || 100);
 
@@ -580,24 +575,22 @@ async function analyze(runFreshOCR = false) {
   if (!price || isNaN(price) || price <= 0) {
     $('ticket').classList.add('hidden'); $('nt').classList.remove('hidden');
     $('nSym').textContent = `${symbol} • ${tf}`;
-    $('nTitle').textContent = 'أدخل السعر الحالي يدوياً بدقة';
-    $('nReasons').innerHTML = `<li>لم يتم رصد السعر من اللوحة. يرجى كتابة السعر الفعلي لتفعيل الأرقام بدقة.</li>`;
+    $('nTitle').textContent = 'يرجى إدخال السعر الحقيقي بدقة في خانة السعر';
+    $('nReasons').innerHTML = `<li>لم يتم رصد سعر تداول فعال. اكتب السعر الصحيح لتظهر الأبطال والأهداف مطابقة تماماً.</li>`;
     return;
   }
 
-  // --- التصحيح الهندسي والحسابي الصارم للستوب والهدف والعائد ---
+  // --- الحسابات الهندسية المضبوطة بدقة بناءً على السعر الفعلي المدخل ---
   const isBuy = px.bias === 'BULLISH';
   const tfFactor = { '5m': 0.0015, '15m': 0.0025, '30m': 0.004, '1h': 0.006, '4h': 0.012, '1d': 0.02 }[tf] || 0.0025;
   const baseUnit = liveMarket?.atr ? liveMarket.atr * 1.1 : price * tfFactor;
 
-  // تحديد سعر الدخول (سعر السوق المباشر أو تصحيح معلق عقلاني)
   const needPendingOrder = (isBuy && px.posInWave > 0.7) || (!isBuy && px.posInWave < 0.3);
   const offset = needPendingOrder ? baseUnit * 0.3 : 0;
   const entryPrice = isBuy ? (price - offset) : (price + offset);
 
-  // حساب الستوب والهدف بمنطق سليم لا يولد أرقاماً سالبة أو فلكية
   const stopDist = Math.max(price * 0.001, baseUnit * 0.8);
-  const effectiveRR = 2.0; // عائد ثابت وآمن 1:2
+  const effectiveRR = 2.0;
   const targetDist = stopDist * effectiveRR;
 
   const slPrice = isBuy ? (entryPrice - stopDist) : (entryPrice + stopDist);
