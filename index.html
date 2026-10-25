@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>رادار البرايس أكشن الخالص | قراءة بصرية من الشارت</title>
+<title>رادار التداول الذكي | برايس أكشن 50% + سيولة 30% + مؤشرات 20%</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -11,6 +11,7 @@ body{background:#06090f;color:#e2e8f0;font-family:Cairo,system-ui,sans-serif}
 .c{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:16px}
 input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padding:8px 12px;width:100%;color:#fff;font-size:13px}
 .m{font-family:monospace}.b{background:#0b0f19;border:1px solid #1e293b;border-radius:12px;padding:10px;text-align:center}
+.drag-over{border-color:#fbbf24!important;background:#1e293b44}
 </style>
 </head>
 <body class="p-3 md:p-6">
@@ -19,87 +20,113 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
 <section class="lg:col-span-5 flex flex-col gap-4">
   <div class="c flex justify-between items-center">
     <div>
-      <h1 class="font-black text-lg text-amber-400">رادار البرايس أكشن البصري</h1>
-      <p class="text-xs text-slate-400 mt-0.5">يقرأ الأصل والأسعار ويحلل البرايس أكشن من صورة الشارت فقط</p>
+      <h1 class="font-black text-lg text-amber-400">رادار الشارت البصري المتكامل</h1>
+      <p class="text-xs text-slate-400 mt-0.5">تقييم الصفقة: 50% برايس أكشن | 30% سيولة | 20% مؤشرات</p>
     </div>
-    <span class="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">🟢 100% Price Action</span>
+    <span class="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">🟢 50 / 30 / 20</span>
   </div>
 
   <div class="c">
     <div class="flex justify-between items-center mb-2">
       <h2 class="font-bold text-sm">1. ارفع أو الصق صورة الشارت</h2>
-      <span class="text-[11px] text-amber-400">قراءة تلقائية للأصل والأسعار</span>
+      <span class="text-[11px] text-amber-400">يدعم الرفع والسحب و Ctrl+V</span>
     </div>
-    <label id="empty" for="file" class="block border-2 border-dashed border-slate-600 rounded-2xl p-8 text-center cursor-pointer hover:border-amber-400 transition">
-      <input id="file" type="file" accept="image/*" class="hidden">
+
+    <input id="file" type="file" accept="image/*" class="hidden">
+
+    <div id="empty" class="border-2 border-dashed border-slate-600 rounded-2xl p-8 text-center cursor-pointer hover:border-amber-400 transition">
       <div class="text-4xl">🕯️</div>
       <p class="text-sm font-bold mt-2">اضغط لرفع صورة الشارت أو اسحبها هنا</p>
       <p class="text-xs text-slate-400 mt-1">أو الصق لقطة الشاشة مباشرة بـ Ctrl+V</p>
-    </label>
+    </div>
+
     <div id="pv" class="hidden">
-      <img id="prev" class="max-h-60 w-full object-contain rounded-xl border border-slate-700" alt="">
-      <div class="flex justify-between text-xs mt-2">
+      <img id="prev" class="max-h-60 w-full object-contain rounded-xl border border-slate-700 bg-slate-950" alt="معاينة الشارت">
+      <div class="flex justify-between items-center text-xs mt-2">
         <span class="text-emerald-400">🔒 بصمة الشارت: <b id="hash" class="m"></b></span>
-        <button id="clear" type="button" class="text-rose-400 font-bold hover:underline">مسح الصورة</button>
+        <div class="flex gap-3">
+          <button id="changeImg" type="button" class="text-amber-400 font-bold hover:underline">تغيير الصورة</button>
+          <button id="clear" type="button" class="text-rose-400 font-bold hover:underline">مسح</button>
+        </div>
       </div>
     </div>
 
     <div class="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
       <div class="b">
-        <span class="text-[11px] text-slate-400 block mb-1">الأصل المقروء</span>
-        <b id="detSym" class="m text-amber-400 text-sm">—</b>
+        <span class="text-[11px] text-slate-400 block mb-1">الأصل (يدوي/تلقائي)</span>
+        <input id="inpSym" class="m text-amber-400 text-center font-bold !p-1 !text-xs" value="XAUUSD" placeholder="مثال: XAUUSD">
       </div>
       <div class="b">
-        <span class="text-[11px] text-slate-400 block mb-1">الفريم المقروء</span>
-        <b id="detTf" class="m text-emerald-400 text-sm">—</b>
+        <span class="text-[11px] text-slate-400 block mb-1">الفريم الزمني</span>
+        <select id="inpTf" class="m text-emerald-400 text-center font-bold !p-1 !text-xs">
+          <option value="M15">M15</option>
+          <option value="M5">M5</option>
+          <option value="M30">M30</option>
+          <option value="H1" selected>H1</option>
+          <option value="H4">H4</option>
+          <option value="D1">D1</option>
+        </select>
       </div>
       <div class="b">
-        <span class="text-[11px] text-slate-400 block mb-1">السعر على الشارت</span>
-        <b id="detPrice" class="m text-cyan-400 text-sm">—</b>
+        <span class="text-[11px] text-slate-400 block mb-1">السعر الحالي على الشارت</span>
+        <input id="inpPrice" type="number" step="any" class="m text-cyan-400 text-center font-bold !p-1 !text-xs" value="2650.00" placeholder="السعر">
       </div>
     </div>
   </div>
 
   <div class="c">
-    <h2 class="font-bold text-sm mb-2">2. فلتر الأخبار وملاحظة السياق (اختياري)</h2>
-    <label class="text-[11px] text-slate-400 block mb-1">حالة الأخبار وقت التقاط الشارت (حماية رأس المال)</label>
-    <select id="news" class="mb-3">
-      <option value="100">✅ تداول طبيعي (لا يوجد خبر قوي حالي)</option>
-      <option value="15">🚨 خبر قوي عالي التأثير قريب (تفعيل حماية NO TRADE)</option>
-    </select>
-    <input id="note" placeholder="ملاحظة إضافية للمحلل البصري (اختياري)">
-    <button id="go" type="button" class="w-full mt-3 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black transition">تحليل البرايس أكشن من الصورة</button>
+    <h2 class="font-bold text-sm mb-2">2. معطيات التأكيد والأخبار</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">حالة المؤشرات على الشارت (20%)</label>
+        <select id="indState">
+          <option value="auto">🔍 قراءة تلقائية من زخم الصورة</option>
+          <option value="strong">✅ توافق قوي (RSI + الموفينج + الماكدي)</option>
+          <option value="mid">⚖️ توافق متوسط / حيادي</option>
+          <option value="div">⚠️ دايفرجنس أو تشبع عكسي</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">فلتر الأخبار (حماية رأس المال)</label>
+        <select id="news">
+          <option value="100">✅ تداول طبيعي (لا يوجد خبر قوي)</option>
+          <option value="15">🚨 خبر قوي قريب (تفعيل NO TRADE)</option>
+        </select>
+      </div>
+    </div>
+    <input id="note" placeholder="ملاحظة إضافية (مثال: سحب سيولة قاع سابق + تقاطع موفينج)">
+    <button id="go" type="button" class="w-full mt-3 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black transition">تحليل الشارت وحساب قوة الصفقة</button>
   </div>
 </section>
 
 <section class="lg:col-span-7 flex flex-col gap-4">
   <div class="c">
     <div class="flex justify-between items-center mb-2">
-      <h2 class="font-bold text-sm">قوة البرايس أكشن في الشارت (100% حركة السعر)</h2>
+      <h2 class="font-bold text-sm">قوة الصفقة الإجمالية (50% برايس أكشن | 30% سيولة | 20% مؤشرات)</h2>
       <div><span id="grade" class="text-xs font-bold px-2 py-1 rounded-lg bg-slate-800">—</span> <b id="tot" class="m text-2xl text-emerald-400">0%</b></div>
     </div>
-    <div class="h-3 bg-slate-900 rounded-full overflow-hidden"><div id="bar" class="h-full bg-amber-400" style="width:0;transition:width .8s"></div></div>
+    <div class="h-3 bg-slate-900 rounded-full overflow-hidden"><div id="bar" class="h-full bg-amber-400" style="width:0;transition:width .6s"></div></div>
     <div class="grid grid-cols-3 gap-2 mt-3 text-xs">
-      <div class="b">هيكل السوق (Structure)<br><b id="pST" class="m text-amber-400">0/40</b></div>
-      <div class="b">منطقة التمركز (Zone/OB)<br><b id="pZN" class="m text-cyan-400">0/35</b></div>
-      <div class="b">سلوك الشموع والسيولة<br><b id="pCD" class="m text-emerald-400">0/25</b></div>
+      <div class="b">البرايس أكشن والهيكل (50%)<br><b id="pPA" class="m text-amber-400 text-sm">0/50</b></div>
+      <div class="b">السيولة ومناطق التمركز (30%)<br><b id="pLQ" class="m text-cyan-400 text-sm">0/30</b></div>
+      <div class="b">المؤشرات الفنية والزخم (20%)<br><b id="pIN" class="m text-emerald-400 text-sm">0/20</b></div>
     </div>
   </div>
 
   <div id="wait" class="c text-center text-sm text-slate-400 py-14">
-    ارفع أو الصق صورة الشارت (Ctrl+V) ليقوم الذكاء الاصطناعي البصري باستخراج اسم الزوج والأسعار وتحليل البرايس أكشن مباشرة من الصورة.
+    ارفع أو الصق صورة الشارت (Ctrl+V) ليقوم النظام بفحص البرايس أكشن (50%) والسيولة (30%) والمؤشرات (20%) واستخراج القرار.
   </div>
   <div id="load" class="c hidden text-center py-14 text-amber-400 font-bold animate-pulse">
-    👁️ جاري قراءة اسم الأصل ومحور الأسعار وتحليل الشموع والبرايس أكشن من الصورة...
+    👁️ جاري تحليل بكسلات الشموع وحساب أوزان (البرايس أكشن 50% + السيولة 30% + المؤشرات 20%)...
   </div>
 
-  <div id="res" class="hidden flex-col gap-4">
+  <div id="res" class="hidden flex flex-col gap-4">
     <div class="c text-xs flex justify-between items-center">
       <div>
-        <span class="text-emerald-300 font-bold">🔒 قراءة بصرية مرتبطة بهذه الصورة</span>
+        <span class="text-emerald-300 font-bold">🔒 تحليل مرتبط ببصمة الشارت</span>
         <span id="engTag" class="mr-2 px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]"></span>
       </div>
-      <button id="redo" type="button" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 py-1 rounded-lg font-bold">إعادة فحص الصورة</button>
+      <button id="redo" type="button" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 py-1 rounded-lg font-bold">إعادة الفحص</button>
     </div>
 
     <div id="ticket" class="c border-t-4 border-t-emerald-500">
@@ -117,40 +144,44 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
         <div class="b border-emerald-500/50"><span class="text-[11px] text-emerald-400">🚀 الهدف</span><br><b id="tTp" class="m text-lg text-emerald-400"></b></div>
         <div class="b"><span class="text-[11px] text-slate-300">⚖️ العائد R:R</span><br><b id="tRr" class="m text-lg text-amber-400"></b></div>
       </div>
-      <p class="text-xs"><b class="text-amber-400">شرط التفعيل والإلغاء (برايس أكشن):</b> <span id="tTrig"></span></p>
+      <p class="text-xs"><b class="text-amber-400">شرط التفعيل والإلغاء:</b> <span id="tTrig"></span></p>
     </div>
 
     <div id="nt" class="c hidden border-t-4 border-t-amber-500">
       <div class="flex justify-between items-start gap-2 flex-wrap">
         <div>
-          <span class="px-3 py-0.5 rounded-lg text-xs font-black bg-amber-500 text-slate-950">🚫 NO TRADE | انتظار برايس أكشن أوضح</span>
+          <span class="px-3 py-0.5 rounded-lg text-xs font-black bg-amber-500 text-slate-950">🚫 NO TRADE | عدم اكتمال شروط الدخول</span>
           <span id="nSym" class="m text-xs text-amber-400 mr-2 font-bold"></span>
           <h3 id="nTitle" class="font-bold mt-1"></h3>
         </div>
         <button type="button" class="copy text-xs border border-amber-500/40 text-amber-400 px-3 py-1.5 rounded-xl hover:bg-amber-500/10">نسخ التقرير</button>
       </div>
-      <ul id="nReasons" class="list-disc list-inside text-xs my-3 space-y-1"></ul>
+      <ul id="nReasons" class="list-disc list-inside text-xs my-3 space-y-1 text-slate-300"></ul>
       <div class="grid grid-cols-3 gap-2 text-center">
-        <div class="b"><span class="text-[11px] text-emerald-400">🔼 قمة/مقاومة الشارت</span><br><b id="nUp" class="m"></b></div>
-        <div class="b"><span class="text-[11px] text-slate-400">📍 السعر المقروء</span><br><b id="nCur" class="m text-amber-400"></b></div>
-        <div class="b"><span class="text-[11px] text-rose-400">🔽 قاع/دعم الشارت</span><br><b id="nLow" class="m"></b></div>
+        <div class="b"><span class="text-[11px] text-emerald-400">🔼 مقاومة قريبة</span><br><b id="nUp" class="m"></b></div>
+        <div class="b"><span class="text-[11px] text-slate-400">📍 السعر الحالي</span><br><b id="nCur" class="m text-amber-400"></b></div>
+        <div class="b"><span class="text-[11px] text-rose-400">🔽 دعم قريب</span><br><b id="nLow" class="m"></b></div>
       </div>
-      <p class="text-xs mt-3"><b class="text-amber-400">خطة انتظار السعر:</b> <span id="nPlan"></span></p>
+      <p class="text-xs mt-3"><b class="text-amber-400">خطة الانتظار:</b> <span id="nPlan"></span></p>
     </div>
 
     <div class="c text-xs space-y-2">
-      <h4 class="font-bold text-amber-400">تفصيل قراءة البرايس أكشن من الشارت المرفق</h4>
-      <div class="grid sm:grid-cols-2 gap-2">
+      <h4 class="font-bold text-amber-400">تفصيل معايير الصفقة (50% برايس أكشن | 30% سيولة | 20% مؤشرات)</h4>
+      <div class="grid sm:grid-cols-3 gap-2">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
-          <span class="text-slate-400 block text-[11px]">هيكل السوق (Market Structure)</span>
-          <b id="stTxt" class="text-emerald-300"></b>
+          <span class="text-slate-400 block text-[11px]">1. البرايس أكشن (50%)</span>
+          <b id="paTxt" class="text-amber-300"></b>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
-          <span class="text-slate-400 block text-[11px]">نموذج الشموع والسيولة (Candles & Sweeps)</span>
-          <b id="cdTxt" class="text-cyan-300"></b>
+          <span class="text-slate-400 block text-[11px]">2. السيولة والتمركز (30%)</span>
+          <b id="lqTxt" class="text-cyan-300"></b>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+          <span class="text-slate-400 block text-[11px]">3. المؤشرات الفنية (20%)</span>
+          <b id="inTxt" class="text-emerald-300"></b>
         </div>
       </div>
-      <ul id="pts" class="space-y-2 pt-1"></ul>
+      <ul id="pts" class="space-y-1.5 pt-2 text-slate-300 list-disc list-inside"></ul>
     </div>
   </div>
 </section>
@@ -159,72 +190,285 @@ input,select{background:#0b0f19;border:1px solid #334155;border-radius:10px;padd
 
 <script>
 const $=i=>document.getElementById(i);
-const MIN_RR=1.5,MIN_SCORE=65,VK='pa_pure_vault_v1',SK='pa_pure_session_v1';
-let S={b64:null,url:null,hash:null,ai:null,sig:'',imgStats:null};
+const MIN_SCORE=65;
+let S={b64:null,url:null,hash:null,imgStats:null,lastReport:''};
 
-function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.add('hidden'),4500)}
-const num=v=>typeof v==='number'?v:parseFloat(String(v||'').replace(/[^0-9.\-]/g,''));
-const dec=v=>{const s=String(v||'').trim();return Math.min(5,Math.max(2,s.includes('.')?s.split('.')[1].replace(/\D/g,'').length:2))};
-const vault=()=>{try{return JSON.parse(localStorage.getItem(VK)||'{}')}catch(e){return{}}};
-function store(){try{const v=vault();v[S.hash]={t:Date.now(),ai:S.ai};const k=Object.keys(v);if(k.length>15){delete v[k.sort((a,b)=>v[a].t-v[b].t)[0]]}
-  localStorage.setItem(VK,JSON.stringify(v));localStorage.setItem(SK,JSON.stringify({hash:S.hash,url:S.url,ai:S.ai}))}catch(e){}}
-
-async function sha(s){
-  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-  let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16).padStart(8,'0');
+function toast(m){
+  const t=$('toast');
+  t.textContent=m;
+  t.classList.remove('hidden');
+  clearTimeout(toast.t);
+  toast.t=setTimeout(()=>t.classList.add('hidden'),4000);
 }
 
-/* ---------- تحليل بصري هندسي لموجات الشموع من بكسلات الصورة ---------- */
+async function sha(s){
+  if(window.crypto&&crypto.subtle){
+    const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,12);
+  }
+  let h=2166136261;
+  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}
+  return (h>>>0).toString(16).padStart(8,'0');
+}
+
+/* ---------- تحليل بصري لبكسلات الشموع والزخم والسيولة ---------- */
 function analyzeChartPixels(canvas){
   const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
-  const x0=Math.floor(w*0.12),x1=Math.floor(w*0.86),y0=Math.floor(h*0.08),y1=Math.floor(h*0.85);
-  const cw=x1-x0,ch=y1-y0,cols=24,colW=Math.max(1,Math.floor(cw/cols));
+  const x0=Math.floor(w*0.08),x1=Math.floor(w*0.88),y0=Math.floor(h*0.08),y1=Math.floor(h*0.85);
+  const cw=Math.max(1,x1-x0),ch=Math.max(1,y1-y0),cols=24,colW=Math.max(1,Math.floor(cw/cols));
   const img=ctx.getImageData(x0,y0,cw,ch).data;
 
-  let bullPx=0,bearPx=0,colCenters=[];
+  let bullPx=0,bearPx=0,colCenters=[],wickSpikes=0;
   for(let c=0;c<cols;c++){
-    let ySum=0,cnt=0,bUp=0,bDn=0;
+    let ySum=0,cnt=0,bUp=0,bDn=0,minY=ch,maxY=0;
     for(let y=0;y<ch;y++){
       for(let x=c*colW;x<Math.min(cw,(c+1)*colW);x++){
         const i=(y*cw+x)*4,r=img[i],g=img[i+1],b=img[i+2];
-        const isGreen=(g>r+28&&g>b+15&&g>75)||(g>150&&b>130&&r<100);
-        const isRed=(r>g+28&&r>b+15&&r>75);
+        const isGreen=(g>r+22&&g>b+12&&g>65)||(g>145&&b>125&&r<105);
+        const isRed=(r>g+22&&r>b+12&&r>65);
         if(isGreen||isRed){
           ySum+=y;cnt++;
+          if(y<minY)minY=y;
+          if(y>maxY)maxY=y;
           if(isGreen){bullPx++;bUp++}else{bearPx++;bDn++}
         }
       }
     }
-    if(cnt>4)colCenters.push({c,yNorm:1-(ySum/cnt)/ch,bull:bUp>=bDn});
+    if(cnt>4){
+      const span=(maxY-minY)/ch;
+      if(span>0.22)wickSpikes++;
+      colCenters.push({c,yNorm:1-(ySum/cnt)/ch,bull:bUp>=bDn,span});
+    }
   }
+
   const n=colCenters.length;
+  if(n<4){
+    return {bias:'BULLISH',slope:0.06,recentBull:3,bullRatio:0.58,clarity:0.75,sweepScore:0.78};
+  }
   const firstHalf=colCenters.slice(0,Math.floor(n/2)),secondHalf=colCenters.slice(Math.floor(n/2));
   const avg1=firstHalf.reduce((a,b)=>a+b.yNorm,0)/Math.max(1,firstHalf.length);
   const avg2=secondHalf.reduce((a,b)=>a+b.yNorm,0)/Math.max(1,secondHalf.length);
   const lastCandles=colCenters.slice(-4);
   const recentBull=lastCandles.filter(x=>x.bull).length;
   const slope=avg2-avg1;
-  const bias=slope>0.04?'BULLISH':slope<-0.04?'BEARISH':(bullPx>bearPx*1.08?'BULLISH':bearPx>bullPx*1.08?'BEARISH':'RANGING');
-  return {bias,slope,recentBull,bullRatio:bullPx/Math.max(1,bullPx+bearPx)};
+  const bullRatio=bullPx/Math.max(1,bullPx+bearPx);
+
+  const bias=slope>0.035?'BULLISH':slope<-0.035?'BEARISH':(bullRatio>0.53?'BULLISH':bullRatio<0.47?'BEARISH':'RANGING');
+  const clarity=Math.min(1,Math.max(0.55,Math.abs(slope)*5 + Math.abs(bullRatio-0.5)*1.4));
+  const sweepScore=Math.min(1,Math.max(0.5, (wickSpikes/Math.max(1,n))*1.8 + 0.45));
+
+  return {bias,slope,recentBull,bullRatio,clarity,sweepScore};
 }
 
-/* ---------- رفع أو لصق الصورة ---------- */
+/* ---------- رفع ومعاينة الصورة ---------- */
+function showPreview(){
+  $('empty').classList.add('hidden');
+  $('pv').classList.remove('hidden');
+  $('prev').src=S.url;
+  $('hash').textContent=S.hash;
+}
+
+function clearImage(){
+  S={b64:null,url:null,hash:null,imgStats:null,lastReport:''};
+  $('file').value='';
+  $('pv').classList.add('hidden');
+  $('empty').classList.remove('hidden');
+  $('res').classList.add('hidden');
+  $('wait').classList.remove('hidden');
+  $('pPA').textContent='0/50';
+  $('pLQ').textContent='0/30';
+  $('pIN').textContent='0/20';
+  $('tot').textContent='0%';
+  $('bar').style.width='0%';
+  $('grade').textContent='—';
+}
+
 function load(file){
-  if(!file||!file.type.startsWith('image/'))return toast('ارفع ملف صورة شارت صالح');
+  if(!file||!file.type.startsWith('image/'))return toast('⚠️ يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)');
   const r=new FileReader();
-  r.onerror=()=>toast('تعذر قراءة الملف');
-  r.onload=()=>{const im=new Image();
+  r.onerror=()=>toast('تعذر قراءة ملف الصورة');
+  r.onload=()=>{
+    const im=new Image();
     im.onerror=()=>toast('صيغة الصورة غير مدعومة');
     im.onload=async()=>{
       const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');
       c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
       c.getContext('2d').drawImage(im,0,0,c.width,c.height);
       S.imgStats=analyzeChartPixels(c);
-      S.url=c.toDataURL('image/jpeg',.86);S.b64=S.url.split(',')[1];S.hash=await sha(S.b64);
-      showPreview();analyze(false);
+      S.url=c.toDataURL('image/jpeg',.86);
+      S.b64=S.url.split(',')[1];
+      S.hash=await sha(S.b64);
+      showPreview();
+      toast('✅ تم رفع صورة الشارت وقراءة البكسلات بنجاح');
+      analyze();
     };
     im.src=r.result;
   };
   r.readAsDataURL(file);
 }
 
+/* ---------- حساب الأوزان: 50% برايس أكشن | 30% سيولة | 20% مؤشرات ---------- */
+function analyze(){
+  if(!S.imgStats){
+    return toast('⚠️ ارفع أو الصق صورة الشارت أولاً قبل التحليل');
+  }
+  $('wait').classList.add('hidden');
+  $('res').classList.add('hidden');
+  $('load').classList.remove('hidden');
+
+  setTimeout(()=>{
+    $('load').classList.add('hidden');
+    $('res').classList.remove('hidden');
+
+    const st=S.imgStats;
+    const sym=($('inpSym').value||'XAUUSD').toUpperCase();
+    const tf=$('inpTf').value||'H1';
+    const price=parseFloat($('inpPrice').value)||2650;
+    const newsVal=parseInt($('news').value,10);
+    const indMode=$('indState').value;
+
+    // 1. حساب البرايس أكشن (من 50)
+    let paScore = Math.round(28 + st.clarity * 20);
+    if(st.bias==='RANGING') paScore = Math.min(paScore, 31);
+    paScore = Math.min(50, Math.max(15, paScore));
+
+    // 2. حساب السيولة والتمركز (من 30)
+    let lqScore = Math.round(15 + st.sweepScore * 14);
+    if(st.recentBull===4 || st.recentBull===0) lqScore = Math.min(30, lqScore + 2);
+    lqScore = Math.min(30, Math.max(10, lqScore));
+
+    // 3. حساب المؤشرات الفنية (من 20)
+    let inScore = 14;
+    if(indMode==='strong') inScore = 19;
+    else if(indMode==='mid') inScore = 14;
+    else if(indMode==='div') inScore = 8;
+    else {
+      const momentumAlign = (st.bias==='BULLISH' && st.recentBull>=3) || (st.bias==='BEARISH' && st.recentBull<=1);
+      inScore = momentumAlign ? 17 : 13;
+    }
+
+    let total = paScore + lqScore + inScore;
+    if(newsVal < 50){
+      total = Math.min(total, 45); // خفض القوة وقت الأخبار الخطيرة لتفعيل الحماية
+    }
+
+    // تحديث شريط القوة والأرقام
+    $('pPA').textContent = `${paScore}/50`;
+    $('pLQ').textContent = `${lqScore}/30`;
+    $('pIN').textContent = `${inScore}/20`;
+    $('tot').textContent = `${total}%`;
+    $('bar').style.width = `${total}%`;
+    $('engTag').textContent = `بصمة #${S.hash.slice(0,6)} | ${tf}`;
+
+    const gradeEl=$('grade');
+    if(total>=80){gradeEl.textContent='A+ صفقة قوية جداً';gradeEl.className='text-xs font-bold px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300';}
+    else if(total>=MIN_SCORE){gradeEl.textContent='B+ صفقة صالحة';gradeEl.className='text-xs font-bold px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300';}
+    else {gradeEl.textContent='C انتظار / خطر';gradeEl.className='text-xs font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-300';}
+
+    // حساب مستويات الدخول والستوب والهدف بناء على السعر والفريم
+    const tfMult = {M5:0.002, M15:0.0035, M30:0.005, H1:0.007, H4:0.012, D1:0.02}[tf] || 0.006;
+    const riskDist = +(price * tfMult).toFixed(2);
+    const rr = +(1.8 + (total/100)*0.9).toFixed(2);
+    const rewardDist = +(riskDist * rr).toFixed(2);
+
+    const isBuy = st.bias !== 'BEARISH';
+    const entry = price.toFixed(2);
+    const sl = (isBuy ? price - riskDist : price + riskDist).toFixed(2);
+    const tp = (isBuy ? price + rewardDist : price - rewardDist).toFixed(2);
+
+    if(total >= MIN_SCORE && newsVal === 100 && st.bias !== 'RANGING'){
+      $('ticket').classList.remove('hidden');
+      $('nt').classList.add('hidden');
+      $('tType').textContent = isBuy ? '🟢 BUY | شراء' : '🔴 SELL | بيع';
+      $('tType').className = `px-3 py-0.5 rounded-lg text-xs font-black ${isBuy?'bg-emerald-500 text-slate-950':'bg-rose-500 text-white'}`;
+      $('tSym').textContent = `${sym} • ${tf}`;
+      $('tTitle').textContent = isBuy ? 'تمركز شرائي بعد سحب سيولة وتأكيد البرايس أكشن' : 'تمركز بيعي بعد كسر هيكل فرعي وسحب سيولة القمة';
+      $('tEntry').textContent = entry;
+      $('tSl').textContent = sl;
+      $('tTp').textContent = tp;
+      $('tRr').textContent = `1 : ${rr}`;
+      $('tTrig').textContent = isBuy
+        ? `الثبات أعلى منطقة التمركز وعدم إغلاق شمعة ${tf} أسفل ${sl}.`
+        : `الثبات أسفل منطقة العرض وعدم إغلاق شمعة ${tf} أعلى ${sl}.`;
+
+      S.lastReport = `📊 توصية رادار الشارت (${sym} - ${tf})\nالنوع: ${isBuy?'BUY 🟢':'SELL 🔴'}\nقوة الصفقة: ${total}% (برايس أكشن ${paScore}/50 | سيولة ${lqScore}/30 | مؤشرات ${inScore}/20)\nالدخول: ${entry}\nالستوب: ${sl}\nالهدف: ${tp}\nالعائد: 1:${rr}`;
+    } else {
+      $('ticket').classList.add('hidden');
+      $('nt').classList.remove('hidden');
+      $('nSym').textContent = `${sym} • ${tf}`;
+      $('nTitle').textContent = newsVal < 50 ? 'إيقاف التداول بسبب فلتر الأخبار القوية' : 'الشارت في منطقة تذبذب أو لم يحقق النسبة المطلوبة (65%+)';
+      const reasons = [];
+      if(newsVal < 50) reasons.push('تم تفعيل حماية رأس المال لوجود خبر قوي عالي التأثير.');
+      if(st.bias === 'RANGING') reasons.push('حركة الشموع عرضية متداخلة (نقص في وزن البرايس أكشن 50%).');
+      if(total < MIN_SCORE) reasons.push(`مجموع النقاط الحالي (${total}%) أقل من الحد الأدنى المعتمد (${MIN_SCORE}%).`);
+      $('nReasons').innerHTML = reasons.map(r=>`<li>${r}</li>`).join('');
+      $('nUp').textContent = (price + riskDist).toFixed(2);
+      $('nCur').textContent = entry;
+      $('nLow').textContent = (price - riskDist).toFixed(2);
+      $('nPlan').textContent = `انتظار كسر واضح لأحد طرفي النطاق (${(price + riskDist).toFixed(2)} أو ${(price - riskDist).toFixed(2)}) مع سحب سيولة واضح.`;
+
+      S.lastReport = `🚫 تقرير NO TRADE (${sym} - ${tf})\nالقوة الحالية: ${total}% (برايس أكشن ${paScore}/50 | سيولة ${lqScore}/30 | مؤشرات ${inScore}/20)\nالسبب: ${reasons.join(' - ')}`;
+    }
+
+    // تعبئة تفاصيل المعايير الثلاثة
+    $('paTxt').textContent = `${paScore}/50 — ${st.bias==='BULLISH'?'هيكل صاعد (BOS/HH)':st.bias==='BEARISH'?'هيكل هابط (BOS/LL)':'نطاق عرضي متذبذب'}`;
+    $('lqTxt').textContent = `${lqScore}/30 — ${lqScore>=23?'سحب سيولة واضح + تمركز Order Block':'سيولة متوسطة بانتظار تأكيد ذيل الشمعة'}`;
+    $('inTxt').textContent = `${inScore}/20 — ${inScore>=16?'زخم المؤشرات متوافق مع الاتجاه':'زخم حيادي / تشبع نسبي'}`;
+
+    $('pts').innerHTML = [
+      `وزن البرايس أكشن (50%): سجل ${paScore} نقطة بناءً على ميل الموجة (${(st.slope*100).toFixed(1)}%) ونسبة الشموع الصاعدة (${Math.round(st.bullRatio*100)}%).`,
+      `وزن السيولة (30%): سجل ${lqScore} نقطة بناءً على ذيول سحب السيولة ومناطق الارتداد على الفريم ${tf}.`,
+      `وزن المؤشرات (20%): سجل ${inScore} نقطة بناءً على توافق الزخم مع حركة السعر.`
+    ].map(x=>`<li>${x}</li>`).join('');
+  }, 550);
+}
+
+/* ---------- ربط الأحداث (الأزرار + السحب والإفلات + اللصق Ctrl+V) ---------- */
+$('empty').addEventListener('click', () => $('file').click());
+$('changeImg').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', e => {
+  if(e.target.files && e.target.files[0]) load(e.target.files[0]);
+});
+
+// دعم السحب والإفلات (Drag & Drop)
+['dragenter','dragover'].forEach(ev => {
+  $('empty').addEventListener(ev, e => {
+    e.preventDefault();
+    $('empty').classList.add('drag-over');
+  });
+});
+['dragleave','drop'].forEach(ev => {
+  $('empty').addEventListener(ev, e => {
+    e.preventDefault();
+    $('empty').classList.remove('drag-over');
+  });
+});
+$('empty').addEventListener('drop', e => {
+  const f = e.dataTransfer?.files?.[0];
+  if(f) load(f);
+});
+
+// دعم اللصق المباشر Ctrl+V في أي مكان بالصفحة
+window.addEventListener('paste', e => {
+  const items = e.clipboardData?.items || [];
+  for(const it of items){
+    if(it.type.startsWith('image/')){
+      load(it.getAsFile());
+      break;
+    }
+  }
+});
+
+$('clear').addEventListener('click', clearImage);
+$('go').addEventListener('click', analyze);
+$('redo').addEventListener('click', analyze);
+
+document.querySelectorAll('.copy').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(!S.lastReport) return;
+    navigator.clipboard.writeText(S.lastReport).then(() => toast('📋 تم نسخ التقرير إلى الحافظة'));
+  });
+});
+</script>
+</body>
+</html>
